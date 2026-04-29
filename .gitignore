@@ -1,0 +1,14 @@
+.next
+node_modules
+dist
+coverage
+*.log
+.DS_Store
+.env*.local
+tsconfig.tsbuildinfo
+resume_samples/
+scratch/
+pm_resume.docx
+script.scpt
+test-partial.js
+test-zod*

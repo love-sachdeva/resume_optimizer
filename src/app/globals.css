@@ -1,0 +1,248 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(117, 240, 214, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(247, 199, 108, 0.18), transparent 35%),
+    linear-gradient(180deg, #f8f4e8 0%, #f5f1e4 48%, #efe7d8 100%);
+  color: #111111;
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(117, 240, 214, 0.4);
+}
+
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(17, 17, 17, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 17, 17, 0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* ── Resume A4 Page Preview ────────────────────────────────── */
+
+.resume-page-wrapper {
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 4px 16px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.resume-page {
+  font-family: "Times New Roman", "Times", Georgia, serif;
+  color: #111;
+  padding: 28px 24px 24px;
+  line-height: 1.28;
+  font-size: 10px;
+  max-width: 100%;
+  /* A4 proportional min-height: 297/210 ≈ 1.414 ratio */
+  min-height: 0;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .resume-page {
+    padding: 36px 32px 32px;
+    font-size: 10.5px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .resume-page {
+    padding: 40px 36px 36px;
+    font-size: 11px;
+  }
+}
+
+.resume-name {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.5em;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.resume-contact {
+  text-align: center;
+  font-size: 0.88em;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+/* ── Section header (yellow highlight) ─────────────────────── */
+
+.resume-section {
+  margin-bottom: 8px;
+}
+
+.resume-section-header {
+  font-weight: 700;
+  font-size: 1.05em;
+  text-transform: capitalize;
+  background: #fff200;
+  display: inline-block;
+  padding: 1px 6px;
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+
+/* ── Three-column row (date | content | location) ──────────── */
+
+.resume-entry {
+  margin-bottom: 6px;
+}
+
+.resume-three-col {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.92em;
+  line-height: 1.3;
+}
+
+@media (max-width: 480px) {
+  .resume-three-col {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+.resume-col-left {
+  font-size: 0.92em;
+  white-space: nowrap;
+}
+
+.resume-col-center {
+  font-size: 0.95em;
+}
+
+.resume-col-right {
+  font-size: 0.92em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ── Sub-detail (indented under center column) ─────────────── */
+
+.resume-sub-detail {
+  padding-left: 138px;
+  font-size: 0.92em;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.resume-role-title {
+  font-weight: 600;
+  font-size: 0.93em;
+}
+
+@media (max-width: 480px) {
+  .resume-sub-detail {
+    padding-left: 0;
+  }
+}
+
+/* ── Bullet points ─────────────────────────────────────────── */
+
+.resume-bullet {
+  padding-left: 138px;
+  text-indent: -10px;
+  font-size: 0.92em;
+  line-height: 1.35;
+  margin-bottom: 1px;
+}
+
+.resume-bullet::before {
+  content: "•";
+  margin-right: 5px;
+  display: inline;
+}
+
+@media (max-width: 480px) {
+  .resume-bullet {
+    padding-left: 12px;
+  }
+}
+
+/* ── Skills row ────────────────────────────────────────────── */
+
+.resume-skills-row {
+  padding-left: 138px;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+
+.resume-skills-label {
+  font-weight: 600;
+}
+
+.resume-skills-list {
+  font-weight: 400;
+}
+
+@media (max-width: 480px) {
+  .resume-skills-row {
+    padding-left: 0;
+  }
+}
+
+/* ── Diff highlighting ─────────────────────────────────────── */
+
+.resume-line-changed {
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 2px solid rgba(34, 197, 94, 0.6);
+  padding-top: 1px;
+  padding-bottom: 1px;
+  border-radius: 2px;
+}
+
+.resume-line-removed {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 2px solid rgba(239, 68, 68, 0.5);
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
