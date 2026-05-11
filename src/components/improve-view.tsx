@@ -16,10 +16,9 @@ import {
 import { useAppSettings } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { SessionEmptyState } from "@/components/session-empty-state";
 import { SectionLabel } from "@/components/site/section-label";
-import { ResumePreview } from "@/components/resume-preview";
+import { ResumeDiffViewer } from "@/components/resume-diff-viewer";
 import {
   Dialog,
   DialogContent,
@@ -230,8 +229,6 @@ export function ImproveView() {
     );
   }
 
-  const identity = session.analysis.resumeProfile.identity;
-
   return (
     <div className="relative min-w-0 overflow-x-hidden px-6 py-8 lg:px-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_20%_0%,hsl(var(--primary)/0.06),transparent_58%)]" />
@@ -266,7 +263,7 @@ export function ImproveView() {
                 ]
               }
           }
-          transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <p className="mono text-[10px] uppercase tracking-[0.22em] opacity-75">ATS change</p>
           <div className="mt-1 flex items-end gap-3">
@@ -319,7 +316,7 @@ export function ImproveView() {
       {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
       {info ? <p className="mb-4 text-sm text-emerald-700">{info}</p> : null}
 
-      {/* Resume preview - like apply section */}
+      {/* Resume diff */}
       <motion.div
         initial={reduceMotion ? false : { opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -327,13 +324,16 @@ export function ImproveView() {
       >
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Improved resume preview</CardTitle>
+            <CardTitle className="text-base">Resume changes</CardTitle>
             <CardDescription className="text-xs">
-              The AI-optimized version of your resume for this role.
+              Left is the uploaded resume text. Right is the optimized same-format version.
             </CardDescription>
           </CardHeader>
-          <CardContent className="max-h-[600px] overflow-y-auto">
-            <ResumePreview identity={identity} generated={session.improvedResume} diffMode />
+          <CardContent>
+            <ResumeDiffViewer
+              originalText={session.source.resumeText}
+              improvedText={session.improvedResume.exportText}
+            />
           </CardContent>
         </Card>
       </motion.div>
@@ -373,22 +373,6 @@ export function ImproveView() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Add deeper context - commented out for now
-      <div className="mt-6">
-        <Button
-          variant="outline"
-          onClick={() =>
-            router.push(
-              `/profile?tab=questions&next=${encodeURIComponent(`/questionnaire?session=${session.id}`)}`
-            )
-          }
-        >
-          <Shuffle className="h-4 w-4" />
-          Add deeper context
-        </Button>
-      </div>
-      */}
     </div>
   );
 }

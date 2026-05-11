@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, FileText, ScanSearch, Sparkles } from "lucide-react";
+import { ArrowRight, FileText, ScanSearch, Target } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const floatingCards = [
   { label: "ATS fit", score: "84", x: "8%", y: "16%" },
   { label: "Format lock", score: "DOCX", x: "68%", y: "10%" },
-  { label: "Deep mode", score: "Adaptive", x: "70%", y: "66%" },
+  { label: "JD keywords", score: "Mapped", x: "70%", y: "66%" },
   { label: "Export", score: "DOCX + PDF", x: "16%", y: "70%" }
 ];
 
@@ -19,7 +19,7 @@ const featureList = [
   "Weighted ATS scoring with gap diagnosis",
   "One-page resume improvement without inventing facts",
   "DOCX-first export to preserve the original layout",
-  "Deep improvement only when the role needs more context"
+  "JD-wise rewrite with unsupported gaps flagged clearly"
 ];
 
 const paths = [
@@ -32,15 +32,15 @@ const paths = [
     body: "Tighten bullets and wording using the current resume only."
   },
   {
-    title: "Deep improvement",
-    body: "Answer guided questions when the job needs a stronger positioning shift."
+    title: "JD-wise rewrite",
+    body: "Map the job language to truthful resume evidence before export."
   }
 ];
 
 export function SwarmHero() {
   return (
     <section className="relative overflow-hidden px-6 pb-24 pt-10 lg:px-10 lg:pb-28 lg:pt-16">
-      <div className="grid-overlay absolute inset-0 animate-pulseGrid opacity-40" />
+      <div className="grid-overlay absolute inset-0 opacity-35" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-grain blur-3xl" />
 
       <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
@@ -71,7 +71,7 @@ export function SwarmHero() {
             </Link>
             <Link href="/upload">
               <Button variant="outline" size="lg">
-                Explore deep improvement
+                See resume rewrite
               </Button>
             </Link>
           </div>
@@ -113,7 +113,7 @@ export function SwarmHero() {
                 {[
                   { label: "Score", icon: ScanSearch },
                   { label: "Preserve", icon: FileText },
-                  { label: "Deep mode", icon: Sparkles }
+                  { label: "JD map", icon: Target }
                 ].map((item) => {
                   const ItemIcon = item.icon;
                   return (
@@ -145,7 +145,7 @@ export function SwarmHero() {
                   rotate: [0, index % 2 === 0 ? 4 : -4, 0]
                 }}
                 transition={{
-                  repeat: Number.POSITIVE_INFINITY,
+                  repeat: 0,
                   duration: 7 + index,
                   ease: "easeInOut"
                 }}

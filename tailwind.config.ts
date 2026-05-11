@@ -45,23 +45,13 @@ const config: Config = {
           "radial-gradient(circle at top, rgba(117,240,214,0.18), transparent 35%), radial-gradient(circle at bottom right, rgba(255,143,90,0.18), transparent 32%)"
       },
       keyframes: {
-        marquee: {
-          from: { transform: "translateX(0)" },
-          to: { transform: "translateX(-50%)" }
-        },
         drift: {
           "0%, 100%": { transform: "translate3d(0, 0, 0) rotate(0deg)" },
           "50%": { transform: "translate3d(0, -16px, 0) rotate(6deg)" }
-        },
-        pulseGrid: {
-          "0%, 100%": { opacity: "0.28" },
-          "50%": { opacity: "0.62" }
         }
       },
       animation: {
-        marquee: "marquee 28s linear infinite",
-        drift: "drift 8s ease-in-out infinite",
-        pulseGrid: "pulseGrid 4s ease-in-out infinite"
+        drift: "drift 8s ease-in-out"
       }
     }
   },

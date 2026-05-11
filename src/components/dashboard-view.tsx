@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowRight, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, ShieldAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,8 +184,8 @@ export function DashboardView() {
 
         <Card className="animate-rise-in overflow-hidden bg-background [animation-delay:80ms]">
           <CardHeader>
-            <CardTitle>Choose the next step</CardTitle>
-            <CardDescription>Pick the amount of help you need for this application.</CardDescription>
+            <CardTitle>Next step</CardTitle>
+            <CardDescription>Open the same-format resume rewrite for this application.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             {[
@@ -194,12 +194,6 @@ export function DashboardView() {
                 title: "Resume-only improvement",
                 body: "Sharpen the current resume without asking for more context.",
                 icon: ArrowRight
-              },
-              {
-                href: `/questionnaire?session=${session.id}`,
-                title: "Deep improvement",
-                body: "Answer profile questions and tailor harder for the role.",
-                icon: Sparkles
               }
             ].map((item) => {
               const Icon = item.icon;
