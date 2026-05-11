@@ -7,7 +7,18 @@ import {
 const baseUrl = process.env.SMOKE_BASE_URL || "http://localhost:3000";
 const ilovePdfSitePublicKey = "project_public_c905dd1c01e9fd776983ca40d0a9d2f3";
 const ilovePdfPublicKey = process.env.ILOVEPDF_PUBLIC_KEY || process.env.ILOVEAPI_PUBLIC_KEY || "";
-const hasValidIlovePdfConfig = Boolean(ilovePdfPublicKey && ilovePdfPublicKey !== ilovePdfSitePublicKey);
+const ilovePdfSecretKey = process.env.ILOVEPDF_SECRET_KEY || process.env.ILOVEAPI_SECRET_KEY || "";
+const ilovePdfStaticToken =
+  process.env.ILOVEPDF_JWT ||
+  process.env.ILOVEAPI_JWT ||
+  process.env.ILOVEPDF_TOKEN ||
+  process.env.ILOVEAPI_TOKEN ||
+  "";
+const hasValidIlovePdfConfig = Boolean(
+  ilovePdfStaticToken ||
+    (ilovePdfPublicKey && ilovePdfSecretKey) ||
+    (ilovePdfPublicKey && ilovePdfPublicKey !== ilovePdfSitePublicKey)
+);
 
 const pageRoutes = [
   "/",
@@ -372,10 +383,10 @@ async function main() {
   });
   if (pdfResponse.status === 409 && !hasValidIlovePdfConfig) {
     const payload = await pdfResponse.json().catch(() => ({}));
-    if (!/ILOVEPDF_PUBLIC_KEY|ILOVEAPI_PUBLIC_KEY|valid iLoveAPI project key/i.test(String(payload.error || ""))) {
+    if (!/ILOVEPDF_|ILOVEAPI_|valid iLoveAPI project key/i.test(String(payload.error || ""))) {
       throw new Error("/api/export/pdf returned 409 for an unexpected reason.");
     }
-    console.log("SKIP export/pdf exact conversion (valid iLoveAPI key not configured)");
+    console.log("SKIP export/pdf exact conversion (valid iLoveAPI auth not configured)");
   } else {
     await expectOk(pdfResponse, "/api/export/pdf");
     const pdfType = pdfResponse.headers.get("Content-Type") || "";

@@ -34,6 +34,33 @@ export function ExportView() {
     );
   }
 
+  function buildExportFormData(activeSession: StoredSession) {
+    const formData = new FormData();
+    if (activeSession.source.resumeDocxDataUrl) {
+      formData.append(
+        "templateFile",
+        dataUrlToFile(activeSession.source.resumeDocxDataUrl, activeSession.source.resumeFileName)
+      );
+    }
+    formData.append("originalText", activeSession.source.resumeText);
+    formData.append("exportText", activeSession.improvedResume.exportText);
+    formData.append("lineDiffs", JSON.stringify(activeSession.improvedResume.lineDiffs));
+    formData.append(
+      "skillsDiff",
+      JSON.stringify(activeSession.improvedResume.rewritePlan?.skillsDiff ?? null)
+    );
+    formData.append("layoutHints", JSON.stringify(activeSession.improvedResume.layoutInventory ?? null));
+    formData.append("qualityMode", activeSession.improvedResume.rewritePlan?.fitStrategy ?? "visual-fit-first");
+    formData.append("onePage", String(activeSession.analysis.resumeProfile.formattingPreferences.onePage));
+    formData.append("candidateName", activeSession.analysis.resumeProfile.identity.name);
+    formData.append(
+      "companyName",
+      activeSession.analysis.jobDescriptionProfile.company ||
+        activeSession.analysis.jobDescriptionProfile.roleTitle
+    );
+    return formData;
+  }
+
   async function exportDocx() {
     if (!session) {
       return;
@@ -44,26 +71,7 @@ export function ExportView() {
     setInfo("");
 
     try {
-      const formData = new FormData();
-      if (activeSession.source.resumeDocxDataUrl) {
-        formData.append(
-          "templateFile",
-          dataUrlToFile(activeSession.source.resumeDocxDataUrl, activeSession.source.resumeFileName)
-        );
-      }
-      formData.append("originalText", activeSession.source.resumeText);
-      formData.append("exportText", activeSession.improvedResume.exportText);
-      formData.append("lineDiffs", JSON.stringify(activeSession.improvedResume.lineDiffs));
-      formData.append(
-        "onePage",
-        String(activeSession.analysis.resumeProfile.formattingPreferences.onePage)
-      );
-      formData.append("candidateName", activeSession.analysis.resumeProfile.identity.name);
-      formData.append(
-        "companyName",
-        activeSession.analysis.jobDescriptionProfile.company ||
-          activeSession.analysis.jobDescriptionProfile.roleTitle
-      );
+      const formData = buildExportFormData(activeSession);
 
       const response = await fetch("/api/export/docx", {
         method: "POST",
@@ -108,24 +116,17 @@ export function ExportView() {
     const activeSession = session;
     setPdfLoading(true);
     setError("");
+    setInfo("");
 
     try {
+      const formData = buildExportFormData(activeSession);
       const response = await fetch("/api/export/pdf", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          exportText: activeSession.improvedResume.exportText,
-          candidateName: activeSession.analysis.resumeProfile.identity.name,
-          companyName:
-            activeSession.analysis.jobDescriptionProfile.company ||
-            activeSession.analysis.jobDescriptionProfile.roleTitle
-        })
+        body: formData
       });
 
       if (!response.ok) {
-        const payload = (await response.json()) as { error?: string };
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(payload.error || "Failed to export PDF.");
       }
 
@@ -133,6 +134,12 @@ export function ExportView() {
       const disposition = response.headers.get("Content-Disposition") ?? "";
       const fileName = disposition.match(/filename="(.+)"/)?.[1] ?? "thankyoulove.pdf";
       downloadBlob(blob, fileName);
+      const templatePreserved = response.headers.get("X-Template-Preserved") === "true";
+      setInfo(
+        templatePreserved
+          ? "PDF exported from the patched original DOCX template through iLovePDF."
+          : "PDF exported through iLovePDF from a rebuilt DOCX because no uploaded DOCX template was available."
+      );
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to export PDF.");
     } finally {
