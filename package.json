@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "clean": "rm -rf .next",
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/next-build-retry.mjs",
+    "build:once": "next build",
+    "rebuild": "npm run clean && npm run build",
+    "prestart": "node -e \"const fs=require('fs');const p=require('path');const d=p.join('.next');for(const f of ['BUILD_ID','prerender-manifest.json']){try{fs.accessSync(p.join(d,f));}catch{console.error('\\nIncomplete or missing .next output (expected '+f+'). Run `npm run build` before `npm start`.\\n');process.exit(1);}}\"",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

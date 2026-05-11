@@ -22,6 +22,10 @@ export type StoredSession = {
     resumeFileName: string;
     resumeDocxDataUrl?: string;
     originalFormat: "docx" | "pdf" | "text";
+    coachJobId?: string;
+    coachJobUrl?: string;
+    coachJobTitle?: string;
+    coachCompany?: string;
   };
 };
 

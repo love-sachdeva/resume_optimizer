@@ -1,25 +1,31 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   Download,
   FileArchive,
   FileText,
   LoaderCircle,
-  Shuffle,
   TrendingUp,
   Wand2
 } from "lucide-react";
 
 import { useAppSettings } from "@/lib/auth-store";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SessionEmptyState } from "@/components/session-empty-state";
-import { Switch } from "@/components/ui/switch";
+import { SectionLabel } from "@/components/site/section-label";
+import { ResumePreview } from "@/components/resume-preview";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   dataUrlToFile,
   downloadBlob,
@@ -29,54 +35,24 @@ import {
 } from "@/lib/client-store";
 import type { FormattingPreferences, GeneratedResume } from "@/lib/schemas";
 
-function wordDiff(original: string, improved: string, side: "original" | "improved") {
-  const normalizeWord = (word: string) => word.toLowerCase().replace(/[^\w%₹.+-]/g, "");
-  const originalWords = new Set(original.toLowerCase().split(/\s+/).map(normalizeWord).filter(Boolean));
-  const improvedWords = new Set(improved.toLowerCase().split(/\s+/).map(normalizeWord).filter(Boolean));
-  const words = (side === "original" ? original : improved).split(/(\s+)/);
-
-  return words.map((word, index): ReactNode => {
-    if (!word.trim()) return word;
-    const key = normalizeWord(word);
-    const changed = side === "original" ? !improvedWords.has(key) : !originalWords.has(key);
-    if (!changed) return word;
-
-    return (
-      <mark
-        key={`${word}-${index}`}
-        className={
-          side === "original"
-            ? "rounded bg-red-100 px-1 text-red-800"
-            : "rounded bg-emerald-100 px-1 text-emerald-800"
-        }
-      >
-        {word}
-      </mark>
-    );
-  });
-}
-
 export function ImproveView() {
-  const router = useRouter();
   const settings = useAppSettings();
   const params = useSearchParams();
   const sessionId = params.get("session") ?? "";
   const [session, setSession] = useState<StoredSession | null>(null);
-  const [keepSameFormat, setKeepSameFormat] = useState(true);
-  const [onePage, setOnePage] = useState(true);
   const [tone, setTone] = useState<FormattingPreferences["tone"]>("balanced");
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [isPending, setIsPending] = useState(false);
-  const [showExport, setShowExport] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [docxLoading, setDocxLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const nextSession = getSession(sessionId);
     setSession(nextSession);
     if (nextSession) {
-      setKeepSameFormat(nextSession.analysis.resumeProfile.formattingPreferences.keepSameFormat);
-      setOnePage(nextSession.analysis.resumeProfile.formattingPreferences.onePage);
       setTone(nextSession.analysis.resumeProfile.formattingPreferences.tone);
     }
   }, [sessionId]);
@@ -99,10 +75,10 @@ export function ImproveView() {
           jobText: session.source.jobText,
           answers: session.answers,
           preferences: {
-            keepSameFormat,
-            onePage,
+            keepSameFormat: true,
+            onePage: true,
             tone,
-            formatMode: keepSameFormat ? "same-format" : "ats-optimized"
+            formatMode: "same-format"
           },
           providerConfig: settings.provider
         })
@@ -123,10 +99,10 @@ export function ImproveView() {
             ...current.analysis.resumeProfile,
             formattingPreferences: {
               ...current.analysis.resumeProfile.formattingPreferences,
-              keepSameFormat,
-              onePage,
+              keepSameFormat: true,
+              onePage: true,
               tone,
-              formatMode: keepSameFormat ? "same-format" : "ats-optimized"
+              formatMode: "same-format"
             }
           }
         }
@@ -158,12 +134,15 @@ export function ImproveView() {
       formData.append("originalText", session.source.resumeText);
       formData.append("exportText", session.improvedResume.exportText);
       formData.append("lineDiffs", JSON.stringify(session.improvedResume.lineDiffs));
-      formData.append("onePage", String(session.analysis.resumeProfile.formattingPreferences.onePage));
+      formData.append("skillsDiff", JSON.stringify(session.improvedResume.rewritePlan?.skillsDiff ?? null));
+      formData.append("layoutHints", JSON.stringify(session.improvedResume.layoutInventory ?? null));
+      formData.append("qualityMode", session.improvedResume.rewritePlan?.fitStrategy ?? "visual-fit-first");
+      formData.append("onePage", "true");
       formData.append("candidateName", session.analysis.resumeProfile.identity.name);
       formData.append(
         "companyName",
         session.analysis.jobDescriptionProfile.company ||
-          session.analysis.jobDescriptionProfile.roleTitle
+        session.analysis.jobDescriptionProfile.roleTitle
       );
 
       const response = await fetch("/api/export/docx", {
@@ -180,11 +159,65 @@ export function ImproveView() {
       const disposition = response.headers.get("Content-Disposition") ?? "";
       const fileName = disposition.match(/filename="(.+)"/)?.[1] ?? "thankyoulove.docx";
       downloadBlob(blob, fileName);
-      setInfo("DOCX exported. PDF remains disabled until exact DOCX-to-PDF conversion is available.");
+      setInfo("DOCX exported successfully.");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Failed to export DOCX.");
     } finally {
       setDocxLoading(false);
+    }
+  }
+
+  async function exportPdf() {
+    if (!session) return;
+
+    setPdfLoading(true);
+    setError("");
+    setInfo("");
+
+    try {
+      // First export as DOCX, then convert
+      const formData = new FormData();
+      if (session.source.resumeDocxDataUrl) {
+        formData.append(
+          "templateFile",
+          dataUrlToFile(session.source.resumeDocxDataUrl, session.source.resumeFileName)
+        );
+      }
+      formData.append("originalText", session.source.resumeText);
+      formData.append("exportText", session.improvedResume.exportText);
+      formData.append("lineDiffs", JSON.stringify(session.improvedResume.lineDiffs));
+      formData.append("skillsDiff", JSON.stringify(session.improvedResume.rewritePlan?.skillsDiff ?? null));
+      formData.append("layoutHints", JSON.stringify(session.improvedResume.layoutInventory ?? null));
+      formData.append("qualityMode", session.improvedResume.rewritePlan?.fitStrategy ?? "visual-fit-first");
+      formData.append("onePage", "true");
+      formData.append("candidateName", session.analysis.resumeProfile.identity.name);
+      formData.append(
+        "companyName",
+        session.analysis.jobDescriptionProfile.company ||
+        session.analysis.jobDescriptionProfile.roleTitle
+      );
+
+      // Try to use PDF API if available
+      const response = await fetch("/api/export/pdf", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) {
+        // Fallback: export DOCX and show message
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error || "PDF export is not yet available. Please export as DOCX.");
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const fileName = disposition.match(/filename="(.+)"/)?.[1] ?? "thankyoulove.pdf";
+      downloadBlob(blob, fileName);
+      setInfo("PDF exported successfully.");
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "PDF export failed.");
+    } finally {
+      setPdfLoading(false);
     }
   }
 
@@ -197,187 +230,165 @@ export function ImproveView() {
     );
   }
 
-  const changedDiffs = session.improvedResume.lineDiffs.filter(
-    (diff) => diff.original !== diff.improved
-  );
+  const identity = session.analysis.resumeProfile.identity;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-3">
-          <Badge>Step 3</Badge>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
-            Resume-only improvement
+    <div className="relative min-w-0 overflow-x-hidden px-6 py-8 lg:px-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-[radial-gradient(ellipse_at_20%_0%,hsl(var(--primary)/0.06),transparent_58%)]" />
+
+      {/* Compact header with ATS score */}
+      <motion.div
+        className="relative mb-6 grid gap-4 border-b border-foreground/15 pb-6 md:grid-cols-[1fr_auto] md:items-start"
+        initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div>
+          <SectionLabel index="03">Resume-only improvement</SectionLabel>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+            Rewrite only what the resume <span className="text-primary">supports.</span>
           </h1>
-          <p className="max-w-3xl text-black/65">
-            The draft below only rewrites supported lines. It keeps dates, titles, companies, and
-            structure intact, then rescoring happens on the generated draft.
-          </p>
-          <p className="text-sm text-black/50">
-            Runtime:{" "}
-            {settings.provider.enabled && settings.provider.apiKey
-              ? `${settings.provider.provider} / ${settings.provider.model || "default"}`
-              : "heuristic fallback"}
+          <p className="mt-2 text-sm text-foreground/65">
+            Rewrites supported lines only. Dates, titles, companies, and structure stay intact.
           </p>
         </div>
 
-        <div className="rounded-[28px] border border-black/10 bg-white/80 px-5 py-4">
-          <p className="text-sm uppercase tracking-[0.18em] text-black/45">Actual ATS change</p>
-          <div className="mt-2 flex items-end gap-4">
+        <motion.div
+          className="min-w-[200px] border-2 border-primary bg-primary px-5 py-4 text-primary-foreground shadow-soft"
+          animate={
+            reduceMotion
+              ? undefined
+              : {
+                boxShadow: [
+                  "10px 10px 0 hsl(var(--foreground) / 0.08)",
+                  "12px 16px 0 hsl(var(--foreground) / 0.11)",
+                  "10px 10px 0 hsl(var(--foreground) / 0.08)"
+                ]
+              }
+          }
+          transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <p className="mono text-[10px] uppercase tracking-[0.22em] opacity-75">ATS change</p>
+          <div className="mt-1 flex items-end gap-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-black/42">Before</p>
-              <p className="font-display text-4xl font-semibold">
+              <p className="mono text-[9px] uppercase tracking-[0.16em] opacity-70">Before</p>
+              <p className="display text-4xl">
                 {Math.round(session.analysis.matchAnalysis.overallScore)}
               </p>
             </div>
-            <ArrowRight className="mb-2 h-5 w-5 text-black/35" />
+            <ArrowRight className="mb-2 h-4 w-4 opacity-60" />
             <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-black/42">After</p>
-              <p className="font-display text-5xl font-semibold">
+              <p className="mono text-[9px] uppercase tracking-[0.16em] opacity-70">After</p>
+              <p className="display text-5xl">
                 {Math.round(session.improvedResume.estimatedScore)}
               </p>
             </div>
           </div>
-          <p className="mt-2 flex items-center gap-2 text-sm font-medium text-emerald-700">
-            <TrendingUp className="h-4 w-4" />
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium">
+            <TrendingUp className="h-3 w-3" />
             {session.improvedResume.scoreDelta >= 0 ? "+" : ""}
             {Math.round(session.improvedResume.scoreDelta)} points
           </p>
-          <Progress value={session.improvedResume.estimatedScore} className="mt-3 w-48" />
+        </motion.div>
+      </motion.div>
+
+      {/* Action bar at top - Export + Rebuild */}
+      <motion.div
+        className="mb-6 flex flex-wrap items-center justify-between gap-3 border-2 border-foreground p-4"
+        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.36, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="mono text-[10px] uppercase tracking-[0.18em] text-foreground/50">
+            Format: Same · One page · Tone: {tone}
+          </span>
         </div>
-      </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={rerunImprove} disabled={isPending} variant="outline" size="sm">
+            {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            Rebuild
+          </Button>
+          <Button onClick={() => setExportOpen(true)} size="sm">
+            Continue to export
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
+      {error ? <p className="mb-4 text-sm text-red-600">{error}</p> : null}
+      {info ? <p className="mb-4 text-sm text-emerald-700">{info}</p> : null}
+
+      {/* Resume preview - like apply section */}
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.38, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+      >
         <Card>
-          <CardHeader>
-            <CardTitle>Rewrite controls</CardTitle>
-            <CardDescription>Use these only if you want to rebuild the draft.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-[22px] border border-black/10 bg-white/70 p-4">
-              <div>
-                <p className="font-medium">Keep same format</p>
-                <p className="text-sm text-black/55">Use the original structure as the target frame.</p>
-              </div>
-              <Switch checked={keepSameFormat} onCheckedChange={setKeepSameFormat} />
-            </div>
-            <div className="flex items-center justify-between rounded-[22px] border border-black/10 bg-white/70 p-4">
-              <div>
-                <p className="font-medium">One-page output</p>
-                <p className="text-sm text-black/55">Compress content to a single-page draft.</p>
-              </div>
-              <Switch checked={onePage} onCheckedChange={setOnePage} />
-            </div>
-            <div className="rounded-[22px] border border-black/10 bg-white/70 p-4">
-              <p className="mb-3 font-medium">Tone</p>
-              <div className="flex flex-wrap gap-2">
-                {(["conservative", "balanced", "aggressive"] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setTone(option)}
-                    className={`rounded-full px-4 py-2 text-sm transition ${
-                      tone === option ? "bg-ink text-bone" : "bg-black/5 text-black/65"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Button onClick={rerunImprove} disabled={isPending} className="w-full">
-              {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              Rebuild improvement
-            </Button>
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resume diff</CardTitle>
-            <CardDescription>
-              Original is on the left. Improved wording is on the right. Changed words are highlighted.
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Improved resume preview</CardTitle>
+            <CardDescription className="text-xs">
+              The AI-optimized version of your resume for this role.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {changedDiffs.length ? (
-              changedDiffs.slice(0, 24).map((diff, index) => (
-                <div
-                  key={`${diff.section}-${index}`}
-                  className="grid gap-4 rounded-[24px] border border-black/10 bg-white/72 p-4 md:grid-cols-2"
-                >
-                  <div>
-                    <p className="mb-2 text-xs uppercase tracking-[0.16em] text-red-500">Original</p>
-                    <p className="text-sm leading-6 text-black/72">
-                      {wordDiff(diff.original, diff.improved, "original")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs uppercase tracking-[0.16em] text-emerald-600">Improved</p>
-                    <p className="text-sm font-medium leading-6 text-black/82">
-                      {wordDiff(diff.original, diff.improved, "improved")}
-                    </p>
-                  </div>
-                  <div className="col-span-full border-t border-black/5 pt-3 text-xs text-black/42">
-                    {diff.section}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-[24px] border border-dashed border-black/10 bg-white/70 p-8 text-sm text-black/60">
-                No changed lines are available yet. Rebuild the improvement or add deeper context.
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  router.push(
-                    `/profile?tab=questions&next=${encodeURIComponent(`/questionnaire?session=${session.id}`)}`
-                  )
-                }
-              >
-                <Shuffle className="h-4 w-4" />
-                Add deeper context
-              </Button>
-              <Button onClick={() => setShowExport((current) => !current)}>
-                Continue to export
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {showExport ? (
-              <div className="rounded-[28px] border border-black/10 bg-white/80 p-5">
-                <p className="font-medium">Download final files</p>
-                <p className="mt-1 text-sm text-black/55">
-                  DOCX uses the uploaded DOCX as a template when available. PDF stays disabled until
-                  exact DOCX-to-PDF rendering is available.
-                </p>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <Button onClick={exportDocx} disabled={docxLoading} className="justify-between">
-                    {docxLoading ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileArchive className="h-4 w-4" />
-                    )}
-                    Export DOCX
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" disabled className="justify-between">
-                    <FileText className="h-4 w-4" />
-                    PDF unavailable
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </div>
-                {info ? <p className="mt-3 text-sm text-emerald-700">{info}</p> : null}
-              </div>
-            ) : null}
+          <CardContent className="max-h-[600px] overflow-y-auto">
+            <ResumePreview identity={identity} generated={session.improvedResume} diffMode />
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Export Dialog */}
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Export resume</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-foreground/65">
+              Download your optimized resume. DOCX preserves the original template formatting when available.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Button onClick={exportDocx} disabled={docxLoading} className="justify-between">
+                {docxLoading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileArchive className="h-4 w-4" />
+                )}
+                Export DOCX
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={exportPdf} disabled={pdfLoading} className="justify-between">
+                {pdfLoading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                Export PDF
+                <Download className="h-4 w-4" />
+              </Button>
+            </div>
+            {info ? <p className="text-sm text-emerald-700">{info}</p> : null}
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add deeper context - commented out for now
+      <div className="mt-6">
+        <Button
+          variant="outline"
+          onClick={() =>
+            router.push(
+              `/profile?tab=questions&next=${encodeURIComponent(`/questionnaire?session=${session.id}`)}`
+            )
+          }
+        >
+          <Shuffle className="h-4 w-4" />
+          Add deeper context
+        </Button>
       </div>
+      */}
     </div>
   );
 }

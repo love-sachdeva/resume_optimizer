@@ -18,47 +18,47 @@ export function ResumesTab() {
   if (!mounted) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-rise-in">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-display text-2xl font-semibold tracking-tight">My Resumes</h3>
-          <p className="text-sm text-black/50">Manage your resume versions and templates.</p>
+          <h3 className="display text-2xl font-semibold tracking-tight">My Resumes</h3>
+          <p className="text-sm text-foreground/60">Manage your resume versions and templates.</p>
         </div>
-        <Button className="rounded-full shadow-soft bg-ink text-bone hover:bg-black">
+        <Button>
           <Plus className="mr-2 h-4 w-4" />
           Upload New
         </Button>
       </div>
 
       {resumes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-black/5 rounded-[40px] text-center space-y-4">
-          <div className="h-16 w-16 rounded-full bg-black/5 flex items-center justify-center text-black/20">
+        <div className="flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-foreground/20 bg-card py-20 text-center">
+          <div className="flex h-16 w-16 items-center justify-center border-2 border-foreground/30 text-primary">
              <FileText className="h-8 w-8" />
           </div>
           <div>
              <h3 className="font-semibold text-lg">No resumes saved yet</h3>
-             <p className="text-sm text-black/40">Upload a resume in the Analyze tab to save it here.</p>
+             <p className="text-sm text-foreground/50">Upload a resume in the Analyze tab to save it here.</p>
           </div>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {resumes.map((resume) => (
-            <div key={resume.id} className="group relative rounded-[32px] border border-black/5 bg-white p-6 transition-all hover:shadow-xl">
+            <div key={resume.id} className="group relative border-2 border-foreground bg-card p-6 transition-all hover:-translate-y-0.5 hover:bg-primary/10">
               <div className="flex items-start justify-between mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-ink/5 flex items-center justify-center text-ink">
+                <div className="flex h-12 w-12 items-center justify-center border-2 border-foreground text-primary">
                   <FileText className="h-6 w-6" />
                 </div>
-                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 rounded-full h-6">{resume.domain}</Badge>
+                <Badge className="h-6 border-primary bg-primary/10 text-primary">{resume.domain}</Badge>
               </div>
-              <h4 className="font-display text-xl font-bold text-ink truncate mb-1">{resume.label}</h4>
-              <p className="text-sm text-black/40 mb-6">{new Date(resume.updatedAt).toLocaleDateString()}</p>
+              <h4 className="display mb-1 truncate text-xl font-bold text-foreground">{resume.label}</h4>
+              <p className="mono mb-6 text-sm text-foreground/45">{new Date(resume.updatedAt).toLocaleDateString()}</p>
               
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="rounded-full flex-1">View Details</Button>
+                <Button variant="ghost" size="sm" className="flex-1">View Details</Button>
                 <Button 
                   variant="ghost" 
                   size="md" 
-                  className="h-10 w-10 p-0 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center"
+                  className="flex h-10 w-10 items-center justify-center p-0 text-primary hover:bg-primary/10"
                   onClick={() => deleteSavedResume(resume.id)}
                 >
                   <Trash2 className="h-4 w-4" />

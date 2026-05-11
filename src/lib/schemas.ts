@@ -129,6 +129,109 @@ export const lineDiffSchema = z.object({
   accepted: z.boolean().catch(true)
 });
 
+export const layoutInventorySchema = z.object({
+  layoutKind: z.enum(["paragraphs", "tables", "mixed", "text"]).catch("text"),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().catch(""),
+        lineIndex: z.number().catch(-1)
+      })
+    )
+    .catch([]),
+  candidateLines: z
+    .array(
+      z.object({
+        text: z.string().catch(""),
+        lineIndex: z.number().catch(-1),
+        charCount: z.number().catch(0),
+        reason: z.string().catch("")
+      })
+    )
+    .catch([]),
+  skillsLine: z
+    .object({
+      text: z.string().catch(""),
+      lineIndex: z.number().catch(-1)
+    })
+    .nullable()
+    .catch(null),
+  hyperlinks: z
+    .array(
+      z.object({
+        text: z.string().catch(""),
+        target: z.string().catch(""),
+        kind: z.enum(["email", "linkedin", "url"]).catch("url")
+      })
+    )
+    .catch([]),
+  fontPt: z.number().nullable().catch(null),
+  pageSize: z.string().catch("unknown"),
+  densityRisk: z.enum(["low", "medium", "high"]).catch("medium")
+});
+
+export const skillsDiffSchema = z
+  .object({
+    section: z.string().catch("Skills"),
+    original: z.string().catch(""),
+    improved: z.string().catch(""),
+    accepted: z.boolean().catch(true),
+    insertedSkills: z.array(z.string()).catch([])
+  })
+  .nullable()
+  .catch(null);
+
+export const evidenceStatusSchema = z
+  .enum(["directly-supported", "adjacent", "question-needed", "unsupported"])
+  .catch("unsupported");
+
+export const evidenceMapItemSchema = z.object({
+  keyword: z.string().catch(""),
+  status: evidenceStatusSchema,
+  evidence: z.array(z.string()).catch([]),
+  source: z.enum(["resume", "project", "skills", "certification", "answers", "none"]).catch("none"),
+  confidence: z.number().catch(0)
+});
+
+export const rewritePlanSchema = z.object({
+  lineDiffs: z.array(lineDiffSchema).catch([]),
+  skillsDiff: skillsDiffSchema,
+  safeKeywords: z.array(z.string()).catch([]),
+  excludedKeywords: z.array(z.string()).catch([]),
+  positioningArchetype: z.string().catch("general"),
+  jdPriorityKeywords: z.array(z.string()).catch([]),
+  evidenceMap: z.array(evidenceMapItemSchema).catch([]),
+  unsupportedCriticalGaps: z.array(z.string()).catch([]),
+  scoreReachability: z.enum(["target-90", "best-effort", "capped"]).catch("best-effort"),
+  targetCharRange: z
+    .object({
+      min: z.number().catch(115),
+      max: z.number().catch(120),
+      fallbackMin: z.number().catch(95),
+      fallbackMax: z.number().catch(110)
+    })
+    .catch({
+      min: 115,
+      max: 120,
+      fallbackMin: 95,
+      fallbackMax: 110
+    }),
+  fitStrategy: z
+    .enum(["visual-fit-first", "strict-character-target", "content-first"])
+    .catch("visual-fit-first"),
+  rolePack: z.string().catch("general")
+});
+
+export const exportQaReportSchema = z.object({
+  docxPatched: z.boolean().catch(false),
+  pdfExported: z.boolean().catch(false),
+  pageCount: z.number().nullable().catch(null),
+  textSelectable: z.boolean().nullable().catch(null),
+  linksPreserved: z.boolean().nullable().catch(null),
+  renderedPages: z.number().catch(0),
+  warnings: z.array(z.string()).catch([])
+});
+
 export const adaptiveFollowUpQuestionSchema = z.object({
   id: z.string().catch(""),
   label: z.string().catch(""),
@@ -153,6 +256,9 @@ export const generatedResumeSchema = z.object({
   changeSummary: z.array(z.string()).catch([]),
   unsupportedSuggestions: z.array(z.string()).catch([]),
   lineDiffs: z.array(lineDiffSchema).catch([]),
+  layoutInventory: layoutInventorySchema.optional(),
+  rewritePlan: rewritePlanSchema.optional(),
+  exportQaReport: exportQaReportSchema.optional(),
   followUpQuestions: z.array(adaptiveFollowUpQuestionSchema).catch([]),
   baselineScore: z.number().catch(0),
   estimatedScore: z.number().catch(0),
@@ -257,6 +363,10 @@ export type JobDescriptionProfile = z.infer<typeof jobDescriptionProfileSchema>;
 export type MatchAnalysis = z.infer<typeof matchAnalysisSchema>;
 export type SuggestedChange = z.infer<typeof suggestedChangeSchema>;
 export type GeneratedResume = z.infer<typeof generatedResumeSchema>;
+export type LayoutInventory = z.infer<typeof layoutInventorySchema>;
+export type RewritePlan = z.infer<typeof rewritePlanSchema>;
+export type EvidenceMapItem = z.infer<typeof evidenceMapItemSchema>;
+export type ExportQaReport = z.infer<typeof exportQaReportSchema>;
 export type AnalysisResponse = z.infer<typeof analysisResponseSchema>;
 export type ProviderConfig = z.infer<typeof providerConfigSchema>;
 export type AccountProfile = z.infer<typeof accountProfileSchema>;

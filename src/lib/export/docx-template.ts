@@ -18,13 +18,26 @@ type LineDiffInput = {
   improved?: string;
 };
 
+type SkillsDiffInput = {
+  original?: string;
+  improved?: string;
+  accepted?: boolean;
+} | null;
+
+type QualityMode = "visual-fit-first" | "strict-character-target" | "content-first";
+type CompressionMode = "target" | "compact" | "tight";
+
 type DocxExportQa = {
   patchedLines: number;
+  skillsPatched: boolean;
   trailingBlankRowsRemoved: number;
   visibleParagraphsBefore: number;
   visibleParagraphsAfter: number;
   renderVerification: RenderVerificationStatus;
   compressedLines: number;
+  qualityMode: QualityMode;
+  fitStrategy: CompressionMode;
+  pdfExported: false;
 };
 
 const TARGET_LINE_MIN_CHARS = 115;
@@ -215,14 +228,24 @@ function preserveReasoningFormat(original: string, candidate: string) {
   return `${prefix}${body.replace(/^[A-Za-z]+/, originalLead)}`;
 }
 
-function compressLineForLayout(original: string, candidate: string, aggressive = false) {
+function compressionBounds(mode: CompressionMode) {
+  if (mode === "tight") {
+    return { min: 80, max: 100, expansion: 0 };
+  }
+  if (mode === "compact") {
+    return { min: 95, max: 108, expansion: 0 };
+  }
+  return { min: TARGET_LINE_MIN_CHARS, max: TARGET_LINE_MAX_CHARS, expansion: 8 };
+}
+
+function compressLineForLayout(original: string, candidate: string, mode: CompressionMode = "target") {
   const prefix = candidate.match(/^(\s*[-*•●]\s*)/)?.[1] ?? "";
   const body = prefix ? candidate.slice(prefix.length) : candidate;
   const originalBody = original.replace(/^[-*•●]\s*/, "");
-  const limit = aggressive ? 108 : TARGET_LINE_MAX_CHARS;
+  const bounds = compressionBounds(mode);
   const maxLength = Math.min(
-    Math.max(originalBody.trim().length + (aggressive ? 0 : 8), TARGET_LINE_MIN_CHARS),
-    limit
+    Math.max(originalBody.trim().length + bounds.expansion, bounds.min),
+    bounds.max
   );
   let normalized = preserveReasoningFormat(original, `${prefix}${normalizeLayoutText(body)}`);
 
@@ -304,7 +327,7 @@ function replaceParagraphWithStyledRuns(paragraph: XmlElement, nextText: string)
 }
 
 function splitAcrossTextNodes(nextText: string, textElements: XmlElement[]) {
-  const cleanText = nextText.replace(/\t/g, "");
+  const cleanText = nextText;
   const lengths = textElements.map((element) => Math.max(element.textContent?.length ?? 0, 1));
   const totalLength = lengths.reduce((sum, length) => sum + length, 0);
   let usedWeight = 0;
@@ -347,7 +370,8 @@ function resolvePatchTargets(
   originalText: string | undefined,
   exportText: string,
   lineDiffs: LineDiffInput[] = [],
-  aggressiveCompression = false
+  skillsDiff: SkillsDiffInput = null,
+  compressionMode: CompressionMode = "target"
 ) {
   const templateLines = paragraphs.map((paragraph) => extractWordParagraphText(paragraph));
   const nextLines = splitDocumentLines(exportText);
@@ -365,11 +389,27 @@ function resolvePatchTargets(
 
     const key = normalizeDocxComparableLine(original);
     const replacements = replacementMap.get(key) ?? [];
-    replacements.push(compressLineForLayout(original, improved, aggressiveCompression));
+    const isSkillsLine =
+      /skills/i.test(String((diff as LineDiffInput & { section?: string }).section ?? "")) ||
+      /^\s*(technical\s+skills|product\s+skills|business\s+skills|management\s+skills|program\s+skills|growth\s+skills|gtm\s+skills|skills)\s*[:|\t]/i.test(original);
+    replacements.push(isSkillsLine ? normalizeLayoutText(improved) : compressLineForLayout(original, improved, compressionMode));
     replacementMap.set(key, replacements);
   });
 
-  if (originalText) {
+  if (skillsDiff?.accepted !== false && skillsDiff?.original && skillsDiff?.improved) {
+    const key = normalizeDocxComparableLine(skillsDiff.original);
+    if (key && key !== normalizeDocxComparableLine(skillsDiff.improved)) {
+      const replacements = replacementMap.get(key) ?? [];
+      replacements.push(normalizeLayoutText(skillsDiff.improved));
+      replacementMap.set(key, replacements);
+    }
+  }
+
+  // Same-format DOCX patching must be surgical. When the rewrite engine provides
+  // explicit line diffs, only those lines are safe to replace. A positional
+  // originalText/exportText comparison can shift headings, dates, and contact
+  // lines if the generated export text omits or reorders structural lines.
+  if (originalText && replacementMap.size === 0) {
     const originalLines = splitDocumentLines(originalText);
 
     originalLines.forEach((originalLine, index) => {
@@ -394,7 +434,7 @@ function resolvePatchTargets(
       }
 
       const replacements = replacementMap.get(key) ?? [];
-      replacements.push(compressLineForLayout(originalLine, nextLine, aggressiveCompression));
+      replacements.push(compressLineForLayout(originalLine, nextLine, compressionMode));
       replacementMap.set(key, replacements);
     });
   }
@@ -449,37 +489,9 @@ function resolvePatchTargets(
     };
   }
 
-  // If still no match, try to find specific bullets by content similarity
-  // We use a simple fuzzy matching or "contains" check
-  const mappedNextLines = templateVisibleLines.map(templateLine => {
-    const normalizedTemplate = normalizeDocxComparableLine(templateLine);
-    
-    // Find the best match in nextVisibleLines
-    let bestMatch = templateLine;
-    let maxSimilarity = -1;
-
-    nextVisibleLines.forEach(nextLine => {
-        const normalizedNext = normalizeDocxComparableLine(nextLine);
-        // Simple similarity: common words
-        const wordsT = new Set(normalizedTemplate.split(" "));
-        const wordsN = new Set(normalizedNext.split(" "));
-        const intersection = [...wordsT].filter(w => wordsN.has(w));
-        const similarity = intersection.length / Math.max(wordsT.size, wordsN.size);
-
-        if (similarity > maxSimilarity && similarity > 0.4) {
-            maxSimilarity = similarity;
-            bestMatch = nextLine;
-        }
-    });
-
-    return bestMatch;
-  });
-
-  return {
-    targets: textParagraphs,
-    currentLines: templateVisibleLines,
-    nextLines: mappedNextLines
-  };
+  // Never fuzzy-map a resume template. A wrong match corrupts visible structure
+  // far more than a conservative fallback.
+  return null;
 }
 
 function collectElementsByLocalName(root: XmlNode, localName: string) {
@@ -531,19 +543,26 @@ function removeTrailingBlankRows(document: XmlDocument, enabled: boolean) {
 
 function buildQa(input: {
   patchedLines: number;
+  skillsPatched: boolean;
   trailingBlankRowsRemoved: number;
   visibleParagraphsBefore: number;
   visibleParagraphsAfter: number;
   renderVerification?: RenderVerificationStatus;
   compressedLines: number;
+  qualityMode: QualityMode;
+  fitStrategy: CompressionMode;
 }): DocxExportQa {
   return {
     patchedLines: input.patchedLines,
+    skillsPatched: input.skillsPatched,
     trailingBlankRowsRemoved: input.trailingBlankRowsRemoved,
     visibleParagraphsBefore: input.visibleParagraphsBefore,
     visibleParagraphsAfter: input.visibleParagraphsAfter,
     renderVerification: input.renderVerification ?? "unavailable",
-    compressedLines: input.compressedLines
+    compressedLines: input.compressedLines,
+    qualityMode: input.qualityMode,
+    fitStrategy: input.fitStrategy,
+    pdfExported: false
   };
 }
 
@@ -552,8 +571,10 @@ async function applyTemplatePatch(input: {
   originalText?: string;
   exportText: string;
   lineDiffs?: LineDiffInput[];
+  skillsDiff?: SkillsDiffInput;
   onePage: boolean;
-  aggressiveCompression?: boolean;
+  qualityMode: QualityMode;
+  compressionMode?: CompressionMode;
 }) {
   const zip = await JSZip.loadAsync(input.templateBuffer);
   const documentXmlFile = zip.file("word/document.xml");
@@ -571,7 +592,8 @@ async function applyTemplatePatch(input: {
     input.originalText,
     input.exportText,
     input.lineDiffs,
-    input.aggressiveCompression
+    input.skillsDiff,
+    input.compressionMode ?? "target"
   );
 
   if (!patchTargets) {
@@ -580,7 +602,9 @@ async function applyTemplatePatch(input: {
 
   let changed = false;
   let patchedLines = 0;
+  let skillsPatched = false;
   let compressedLines = 0;
+  const skillsKey = normalizeDocxComparableLine(input.skillsDiff?.original ?? "");
   patchTargets.targets.forEach((paragraph, index) => {
     const currentLine = patchTargets.currentLines[index] ?? "";
     const nextLine = patchTargets.nextLines[index] ?? currentLine;
@@ -589,13 +613,21 @@ async function applyTemplatePatch(input: {
       return;
     }
 
-    if (nextLine.length <= TARGET_LINE_MAX_CHARS) {
+    if ((input.compressionMode ?? "target") !== "target") {
       compressedLines += 1;
     }
 
     changed = true;
     patchedLines += 1;
-    replaceParagraphWithStyledRuns(paragraph, nextLine);
+    const isSkillsPatch = Boolean(skillsKey && normalizeDocxComparableLine(currentLine) === skillsKey);
+    if (isSkillsPatch) {
+      skillsPatched = true;
+    }
+    if (isSkillsPatch) {
+      replaceParagraphText(paragraph, nextLine);
+    } else {
+      replaceParagraphWithStyledRuns(paragraph, nextLine);
+    }
   });
 
   const trailingBlankRowsRemoved = removeTrailingBlankRows(document, input.onePage);
@@ -610,7 +642,10 @@ async function applyTemplatePatch(input: {
         trailingBlankRowsRemoved,
         visibleParagraphsBefore,
         visibleParagraphsAfter,
-        compressedLines
+        compressedLines,
+        skillsPatched,
+        qualityMode: input.qualityMode,
+        fitStrategy: input.compressionMode ?? "target"
       })
     };
   }
@@ -624,7 +659,10 @@ async function applyTemplatePatch(input: {
       trailingBlankRowsRemoved,
       visibleParagraphsBefore,
       visibleParagraphsAfter,
-      compressedLines
+      compressedLines,
+      skillsPatched,
+      qualityMode: input.qualityMode,
+      fitStrategy: input.compressionMode ?? "target"
     })
   };
 }
@@ -634,7 +672,10 @@ export async function patchDocxTemplate(input: {
   originalText?: string;
   exportText: string;
   lineDiffs?: LineDiffInput[];
+  skillsDiff?: SkillsDiffInput;
   onePage?: boolean;
+  qualityMode?: QualityMode;
+  layoutHints?: unknown;
   candidateName: string;
   companyName: string;
 }) {
@@ -647,12 +688,16 @@ export async function patchDocxTemplate(input: {
   }
 
   const onePage = input.onePage ?? true;
+  const qualityMode = input.qualityMode ?? "visual-fit-first";
   const firstPass = await applyTemplatePatch({
     templateBuffer: input.templateBuffer,
     originalText: input.originalText,
     exportText: input.exportText,
     lineDiffs: input.lineDiffs,
-    onePage
+    skillsDiff: input.skillsDiff,
+    onePage,
+    qualityMode,
+    compressionMode: "target"
   });
 
   if (!firstPass) {
@@ -674,8 +719,10 @@ export async function patchDocxTemplate(input: {
       originalText: input.originalText,
       exportText: input.exportText,
       lineDiffs: input.lineDiffs,
+      skillsDiff: input.skillsDiff,
       onePage,
-      aggressiveCompression: true
+      qualityMode,
+      compressionMode: "compact"
     });
 
     if (retry) {
@@ -683,6 +730,36 @@ export async function patchDocxTemplate(input: {
         buffer: retry.buffer,
         onePage
       });
+
+      if (retryVerification === "failed-multiple-pages") {
+        const tightRetry = await applyTemplatePatch({
+          templateBuffer: input.templateBuffer,
+          originalText: input.originalText,
+          exportText: input.exportText,
+          lineDiffs: input.lineDiffs,
+          skillsDiff: input.skillsDiff,
+          onePage,
+          qualityMode,
+          compressionMode: "tight"
+        });
+
+        if (tightRetry) {
+          const tightVerification = await verifyDocxRender({
+            buffer: tightRetry.buffer,
+            onePage
+          });
+
+          return {
+            buffer: tightRetry.buffer,
+            fileName: `${buildExportBaseName(input.candidateName, input.companyName)}.docx`,
+            preservedTemplate: true,
+            qa: {
+              ...tightRetry.qa,
+              renderVerification: tightVerification
+            }
+          };
+        }
+      }
 
       return {
         buffer: retry.buffer,

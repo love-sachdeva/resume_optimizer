@@ -43,26 +43,18 @@ function cleanJobText(value: unknown) {
     .trim();
 }
 
-function buildCompanyScore(job: any, cleanDesc: string) {
-  let score = 52;
-
-  if (job.isEligible) score += 12;
-  if (job.ctcDetails || job.ctc) score += 10;
-  if (cleanDesc.length > 700) score += 10;
-  if (cleanJobText(job.Company?.companydesc).length > 120) score += 8;
-  if (job.categoriesAndLocation?.location?.length) score += 5;
-  if (job.deadline || job.applicationDeadline) score += 3;
-
-  return Math.max(0, Math.min(100, score));
-}
-
 export async function POST(request: Request) {
   try {
-    const token = process.env.COACH_API_TOKEN;
-    const uuid = process.env.COACH_USER_UUID;
+    const body = await request.json().catch(() => ({})) as {
+      coachApiToken?: string;
+      coachUserUuid?: string;
+    };
+    const allowEnvFallback = process.env.COACH_ALLOW_ENV_FALLBACK === "true";
+    const token = body.coachApiToken?.trim() || (allowEnvFallback ? process.env.COACH_API_TOKEN : "");
+    const uuid = body.coachUserUuid?.trim() || (allowEnvFallback ? process.env.COACH_USER_UUID : "");
 
     if (!token || !uuid) {
-      return NextResponse.json({ error: "Missing Coach LMS credentials in environment variables." }, { status: 401 });
+      return NextResponse.json({ error: "Connect your Coach LMS API token and user UUID in Account before syncing jobs." }, { status: 401 });
     }
 
     const apiUrl = `https://api.mastersunion.in/api/v1/placement/job/getJobsForStudent/${uuid}?pageSize=100&pageNo=1`;
@@ -110,7 +102,6 @@ export async function POST(request: Request) {
          cultureInfo = cleanJobText(job.Company.companydesc).substring(0, 220);
       }
 
-      const companyScore = buildCompanyScore(job, cleanDesc);
       const fitStatus = job.isEligible ? "high" : "medium";
 
       return {
@@ -123,12 +114,23 @@ export async function POST(request: Request) {
         date: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : "Recently",
         description: cleanDesc,
         atsScore: null,
-        companyScore,
-        cultureScore: Number((companyScore / 20).toFixed(1)),
+        companyScore: null,
+        cultureScore: null,
         cultureDetails: cultureInfo,
         source: "coach",
         fitStatus,
-        eligible: Boolean(job.isEligible)
+        eligible: Boolean(job.isEligible),
+        additionalInformation: cleanJobText(job.Additional_information),
+        additionalQuestions: Array.isArray(job.additionalQuestions)
+          ? job.additionalQuestions
+              .filter((question: any) => question?.question)
+              .map((question: any) => ({
+                question: cleanJobText(question.question),
+                answerType: question.answerType || "description",
+                options: Array.isArray(question.options) ? question.options : [],
+                mandatory: Boolean(question.mandatory)
+              }))
+          : []
       };
     });
 

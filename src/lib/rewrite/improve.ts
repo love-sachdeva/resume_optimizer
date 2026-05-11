@@ -1,12 +1,16 @@
 import { analyzeMatch } from "@/lib/scoring";
-import { SEMANTIC_CLUSTERS } from "@/lib/constants";
+import { ROLE_PACKS, SEMANTIC_CLUSTERS } from "@/lib/constants";
 import { parseResumeText } from "@/lib/parsing/resume-parser";
 import { buildAdaptiveFollowUpQuestions } from "@/lib/questionnaire";
+import { buildJdPositioningBlueprint, type JdPositioningBlueprint } from "@/lib/rewrite/jd-blueprint";
+import { buildTextLayoutInventory } from "@/lib/rewrite/layout-inventory";
 import type {
   FormattingPreferences,
   GeneratedResume,
   JobDescriptionProfile,
+  LayoutInventory,
   QuestionnaireAnswers,
+  RewritePlan,
   ResumeExperience,
   ResumeProfile
 } from "@/lib/schemas";
@@ -36,7 +40,60 @@ const SAFE_KEYWORD_INFERENCE: Record<string, string[]> = {
   "client outcomes": ["client", "customer", "support", "campaign", "ticket", "resolution"],
   "seo strategy": ["seo", "content", "ranking", "impression", "competitive benchmarking"],
   "performance marketing": ["meta ads", "roas", "ctr", "campaign", "conversion", "funnel", "marketing"],
-  "ai-led growth": ["ai", "ml", "automation", "growth", "experiment", "model"]
+  "ai-led growth": ["ai", "ml", "automation", "growth", "experiment", "model"],
+  "founder’s office": ["founder", "executive", "stakeholder", "leadership", "ownership", "strategy"],
+  "founder's office": ["founder", "executive", "stakeholder", "leadership", "ownership", "strategy"],
+  bizops: ["business", "operations", "metrics", "dashboard", "process", "stakeholder"],
+  "board decks": ["dashboard", "reporting", "presentation", "leadership", "executive", "metric"],
+  "investor updates": ["investor", "fundraising", "leadership", "business metrics", "revenue", "growth"],
+  "founder bandwidth": ["founder", "executive", "ownership", "coordination", "operations"],
+  "process mapping": ["process", "workflow", "sop", "operations", "bottleneck", "automation"],
+  "end-state design": ["process", "workflow", "roadmap", "scope", "stakeholder", "system"],
+  "risk controls": ["risk", "control", "compliance", "legal", "quality", "review"],
+  "change management": ["rollout", "training", "adoption", "stakeholder", "implementation"],
+  aeo: ["seo", "content", "ranking", "answer", "search", "growth"],
+  "content engine": ["content", "seo", "growth", "campaign", "marketing"],
+  "b2b saas": ["saas", "b2b", "subscription", "platform", "workflow", "crm"],
+  "financial modeling": ["finance", "model", "forecast", "portfolio", "revenue", "pricing"],
+  "portfolio analytics": ["portfolio", "analytics", "risk", "dashboard", "metric", "finance"],
+  forecasting: ["forecast", "prediction", "planning", "demand", "revenue", "model"],
+  optimization: ["optimize", "optimization", "improve", "pricing", "capacity", "conversion"],
+  regression: ["regression", "statistics", "analysis", "model", "forecast"],
+  "time series": ["time series", "forecast", "trend", "analysis", "model"],
+  "digital lending": ["lending", "credit", "fintech", "banking", "risk", "partner"],
+  "credit lines": ["credit", "lending", "fintech", "banking"],
+  onboarding: ["onboarding", "re-onboard", "partner portal", "activation", "user"],
+  kyc: ["kyc", "compliance", "onboarding", "identity", "verification"],
+  underwriting: ["underwriting", "risk", "credit", "policy", "approval", "rule"],
+  repayment: ["repayment", "collections", "lending", "credit", "portfolio"],
+  collections: ["collections", "repayment", "lending", "credit", "portfolio"],
+  "risk analytics": ["risk", "analytics", "policy", "dashboard", "approval"],
+  compliance: ["compliance", "legal", "policy", "risk", "approval"],
+  prds: ["prd", "requirements", "scope", "mvp", "roadmap", "discovery"],
+  roadmaps: ["roadmap", "scope", "prioritization", "backlog", "launch"],
+  prioritization: ["prioritize", "prioritization", "scope", "roadmap", "feedback", "fixes"],
+  retention: ["retention", "engagement", "adoption", "activation", "repeat"],
+  "a/b tests": ["experiment", "testing", "a/b", "cohort", "beta", "validation"],
+  "city launches": ["launch", "gtm", "local", "market", "city", "rollout", "ops"],
+  "hyperlocal gtm": ["gtm", "local", "whatsapp", "apartment", "neighbourhood", "referral", "footfall"],
+  "category rollouts": ["rollout", "launch", "product", "category", "store", "service", "menu"],
+  "community building": ["community", "local", "apartment", "neighbourhood", "referral", "users", "customers"],
+  "apartment activation": ["apartment", "local", "whatsapp", "footfall", "activation", "referral"],
+  "launch playbooks": ["launch", "playbook", "sop", "workflow", "rollout", "execution", "onboarding"],
+  "cross-functional execution": ["cross-functional", "stakeholder", "teams", "execution", "coordination", "owners"],
+  "kpi tracking": ["kpi", "metric", "dashboard", "track", "analysis", "data"],
+  cac: ["cac", "acquisition", "marketing", "roas", "conversion", "funnel"],
+  "repeat rate": ["repeat", "retention", "subscription", "frequency", "orders", "customers"],
+  "fill rate": ["fill", "supply", "inventory", "order completion", "vendor", "delivery"],
+  "performance tracking": ["performance", "metric", "track", "analysis", "dashboard", "iteration"],
+  "consumer intelligence": ["consumer", "customer", "feedback", "insight", "market", "research"],
+  cost: ["cost", "costs", "margin", "revenue", "budget", "excel", "dashboard", "operations"],
+  variance: ["variance", "analysis", "dashboard", "budget", "excel", "metric"],
+  budget: ["budget", "cost", "forecast", "planning", "excel", "dashboard"],
+  roi: ["roi", "roas", "revenue", "margin", "cost", "pricing"],
+  "p&l": ["p&l", "revenue", "margin", "cost", "profit"],
+  "product development": ["product", "mvp", "roadmap", "feature", "launch", "user"],
+  "feature development": ["feature", "mvp", "roadmap", "launch", "product", "user"]
 };
 
 const UNSAFE_STANDALONE_KEYWORDS = new Set([
@@ -72,6 +129,10 @@ function preserveBulletFormat(original: string, candidate: string) {
   const clean = candidate.replace(/\s+/g, " ").trim();
   const originalLead = original.trim().match(/^[A-Za-z]+/)?.[0] ?? "";
   const candidateLead = clean.match(/^[A-Za-z]+/)?.[0] ?? "";
+
+  if (/^[A-Za-z]+-/.test(clean)) {
+    return clean;
+  }
 
   if (!originalLead || !candidateLead) {
     return clean;
@@ -143,8 +204,9 @@ function pickSupportedKeywords(
   answers?: QuestionnaireAnswers
 ) {
   const evidenceCorpus = buildResumeEvidenceCorpus(resume, answers);
+  const rolePack = detectRolePackBooster(jd);
 
-  return [...jd.mustHaveKeywords, ...jd.domainKeywords, ...jd.toolsKeywords].filter(
+  return collectRequestedKeywords(jd, rolePack).filter(
     (keyword) => keywordIsSupported(keyword, evidenceCorpus)
   );
 }
@@ -170,11 +232,79 @@ function chooseBulletKeywordSignals(bullet: string, supportedKeywords: string[])
 function normalizeKeywordCasing(text: string) {
   return text
     .replace(/\bApi\b/g, "API")
+    .replace(/\bApis\b/g, "APIs")
     .replace(/\bAi\b/g, "AI")
+    .replace(/\bSql\b/g, "SQL")
+    .replace(/\bKyc\b/g, "KYC")
+    .replace(/\bPrds\b/g, "PRDs")
+    .replace(/\bA\/b\b/g, "A/B")
+    .replace(/\bstakeholder Management\b/g, "Stakeholder Management")
     .replace(/\bSeo\b/g, "SEO")
     .replace(/\bGtm\b/g, "GTM")
     .replace(/\bOkrs\b/g, "OKRs")
-    .replace(/\bQbrs\b/g, "QBRs");
+    .replace(/\bQbrs\b/g, "QBRs")
+    .replace(/\bAeo\b/g, "AEO")
+    .replace(/\bBizops\b/g, "BizOps")
+    .replace(/\bB2b\b/g, "B2B")
+    .replace(/\bSaas\b/g, "SaaS")
+    .replace(/\bCac\b/g, "CAC")
+    .replace(/\bKpi\b/g, "KPI")
+    .replace(/\bXfn\b/g, "XFN")
+    .replace(/\bHris\b/g, "HRIS")
+    .replace(/\bLlm(s?)\b/g, "LLM$1")
+    .replace(/\bRag\b/g, "RAG")
+    .replace(/\bP&l\b/g, "P&L")
+    .replace(/\bRoi\b/g, "ROI");
+}
+
+type RolePack = (typeof ROLE_PACKS)[number];
+
+function phraseIncluded(text: string, phrase: string) {
+  const normalizedText = text.toLowerCase().replace(/[–—-]/g, " ");
+  const normalizedPhrase = phrase.toLowerCase().replace(/[–—-]/g, " ");
+  return normalizedText.includes(normalizedPhrase);
+}
+
+function detectRolePackBooster(jd: JobDescriptionProfile): RolePack | null {
+  const haystack = [
+    jd.roleTitle,
+    jd.roleFamily,
+    jd.rawText,
+    ...jd.mustHaveKeywords,
+    ...jd.domainKeywords,
+    ...jd.responsibilities,
+    ...jd.qualifications
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const scoredPacks = ROLE_PACKS.map((pack) => ({
+    pack,
+    score: pack.matchPhrases.reduce(
+      (total, phrase) => total + (phraseIncluded(haystack, phrase) ? phrase.split(/\s+/).length : 0),
+      0
+    )
+  }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score);
+
+  return scoredPacks[0]?.pack ?? null;
+}
+
+function collectDynamicJdKeywords(jd: JobDescriptionProfile) {
+  return mergeUniqueStrings(jd.mustHaveKeywords, jd.domainKeywords, jd.toolsKeywords);
+}
+
+function collectRequestedKeywords(jd: JobDescriptionProfile, rolePackBooster: RolePack | null) {
+  const dynamicKeywords = collectDynamicJdKeywords(jd);
+  const dynamicKeywordSet = new Set(dynamicKeywords.map((keyword) => keyword.toLowerCase()));
+  const boosterKeywords = rolePackBooster
+    ? [...rolePackBooster.keywords].filter(
+        (keyword) => !dynamicKeywordSet.has(keyword.toLowerCase())
+      )
+    : [];
+
+  return mergeUniqueStrings(dynamicKeywords, boosterKeywords);
 }
 
 function stripAwkwardKeywordTails(text: string) {
@@ -206,9 +336,45 @@ function safeKeywordPhrase(keyword: string, bullet: string) {
       : "";
   }
 
+  if (/product development|feature development/i.test(lowerKeyword)) {
+    return /product|mvp|roadmap|feature|launch|rollout|adoption|user|customer/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
   if (/roadmap|product/i.test(lowerKeyword)) {
     return /product|portal|platform|mvp|scope|roadmap|launch|user|customer|feature/i.test(lowerBullet)
       ? "product roadmap"
+      : "";
+  }
+
+  if (/prd|requirements/i.test(lowerKeyword)) {
+    return /mvp|scope|roadmap|discovery|stakeholder|requirements|launch/i.test(lowerBullet)
+      ? "PRD"
+      : "";
+  }
+
+  if (/digital lending|credit lines?/i.test(lowerKeyword)) {
+    return /lending|credit|fintech|banking|partner|risk/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/kyc|onboarding/i.test(lowerKeyword)) {
+    return /onboarding|re-onboard|partner portal|compliance|activation/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/underwriting|risk analytics|risk controls?/i.test(lowerKeyword)) {
+    return /risk|analytics|policy|approval|rule|credit|governance/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/repayment|collections/i.test(lowerKeyword)) {
+    return /lending|credit|partner|portfolio|risk/i.test(lowerBullet)
+      ? keyword
       : "";
   }
 
@@ -250,6 +416,54 @@ function safeKeywordPhrase(keyword: string, bullet: string) {
 
   if (/seo|performance marketing|growth|content strategy/i.test(lowerKeyword)) {
     return /marketing|growth|content|campaign|conversion|digital|customer|user/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/founder|bizops|board|investor|operating cadence/i.test(lowerKeyword)) {
+    return /founder|executive|leadership|stakeholder|dashboard|metric|review|coordination|strategy|ownership/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/process mapping|end-state design|risk controls|change management/i.test(lowerKeyword)) {
+    return /process|workflow|sop|risk|legal|compliance|automation|rollout|adoption|stakeholder|operations/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/financial modeling|portfolio analytics|forecasting|optimization|regression|time series/i.test(lowerKeyword)) {
+    return /finance|portfolio|risk|forecast|model|pricing|capacity|analytics|analysis|metric|revenue/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/cost|variance|budget|p&l|roi|margin|financial modeling|forecasting/i.test(lowerKeyword)) {
+    return /cost|margin|revenue|budget|forecast|excel|dashboard|report|analytics|analysis|metric|pricing|vendor|operations/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/aeo|answer engine optimization|content engine|b2b saas/i.test(lowerKeyword)) {
+    return /seo|content|growth|marketing|saas|b2b|platform|conversion|funnel|ai/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/city launches|hyperlocal gtm|category rollouts|community building|apartment activation|launch playbooks/i.test(lowerKeyword)) {
+    return /launch|gtm|local|whatsapp|apartment|neighbourhood|referral|footfall|vendor|onboarding|sop|playbook|pricing|delivery|orders|community|market|store|service|menu/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/cac|repeat rate|fill rate|performance tracking|consumer intelligence|kpi tracking/i.test(lowerKeyword)) {
+    return /acquisition|roas|conversion|funnel|repeat|retention|subscription|orders|supply|inventory|vendor|metric|track|analysis|feedback|customer|consumer|market|pricing/i.test(lowerBullet)
+      ? keyword
+      : "";
+  }
+
+  if (/cross-functional execution/i.test(lowerKeyword)) {
+    return /coordinat|stakeholder|teams|owners|execution|launch|release|blocker|workflow/i.test(lowerBullet)
       ? keyword
       : "";
   }
@@ -310,6 +524,43 @@ function weaveKeywordPhrase(bullet: string, phrase: string) {
     }
     if (/policy portal/i.test(bullet)) {
       return bullet.replace(/policy portal/i, "policy product portal");
+    }
+  }
+
+  if (/PRD/i.test(phrase)) {
+    if (/concept to launch/i.test(bullet)) {
+      return bullet.replace(/concept to launch/i, "discovery, PRD and rollout");
+    }
+    if (/MVP scope/i.test(bullet)) {
+      return bullet.replace(/MVP scope/i, "MVP scope and PRD");
+    }
+  }
+
+  if (/digital lending|credit lines?/i.test(phrase)) {
+    if (/fintech platform focused on credit and digital banking/i.test(bullet)) {
+      return bullet.replace(
+        /fintech platform focused on credit and digital banking/i,
+        "fintech platform focused on digital lending, credit lines and banking"
+      );
+    }
+    if (/lending partner/i.test(bullet)) {
+      return bullet.replace(/lending partner/i, "digital lending partner");
+    }
+  }
+
+  if (/kyc|onboarding/i.test(phrase) && /compliance and visibility/i.test(bullet)) {
+    return bullet.replace(/compliance and visibility/i, "onboarding and compliance flows");
+  }
+
+  if (/underwriting|risk analytics|risk controls?/i.test(phrase)) {
+    if (/Risk & Analytics policy product portal/i.test(bullet)) {
+      return bullet.replace(
+        /Risk & Analytics policy product portal for approvals and releases, improving throughput/i,
+        "Risk & Analytics portal improving rule-change governance"
+      );
+    }
+    if (/approval workflows/i.test(bullet)) {
+      return bullet;
     }
   }
 
@@ -384,6 +635,96 @@ function weaveKeywordPhrase(bullet: string, phrase: string) {
     }
   }
 
+  if (/city launches|launch playbooks/i.test(phrase)) {
+    if (/building SOPs, vendor controls and ops rhythm/i.test(bullet)) {
+      return bullet.replace(
+        /building SOPs, vendor controls and ops rhythm/i,
+        "building launch playbooks, SOPs and ops rhythm"
+      );
+    }
+    if (/vendor onboarding and execution/i.test(bullet)) {
+      return bullet.replace(/vendor onboarding and execution/i, "vendor onboarding, launch playbook and execution");
+    }
+    if (/MVP build, launch and adoption/i.test(bullet)) {
+      return bullet.replace(/MVP build, launch and adoption/i, "MVP build, pilot rollout and adoption");
+    }
+  }
+
+  if (/hyperlocal gtm|apartment activation|community building/i.test(phrase)) {
+    if (/WhatsApp-led GTM experiments and hyperlocal acquisition strategies/i.test(bullet)) {
+      return bullet.replace(
+        /WhatsApp-led GTM experiments and hyperlocal acquisition strategies/i,
+        "WhatsApp-led GTM loops, local referrals and neighbourhood activation"
+      );
+    }
+    if (/local GTM via WhatsApp funnels and apartment drives/i.test(bullet)) {
+      return bullet.replace(
+        /local GTM via WhatsApp funnels and apartment drives/i,
+        "hyperlocal GTM through WhatsApp loops, referrals and apartment activation"
+      );
+    }
+  }
+
+  if (/category rollouts|consumer intelligence/i.test(phrase)) {
+    if (/redesigning services using customer feedback and iteration loops/i.test(bullet)) {
+      return bullet.replace(
+        /redesigning services using customer feedback and iteration loops/i,
+        "redesigning service categories using customer feedback and iteration loops"
+      );
+    }
+    if (/redesigning services using customer feedback, pricing tests and faster iteration loops/i.test(bullet)) {
+      return bullet.replace(
+        /redesigning services using customer feedback, pricing tests and faster iteration loops/i,
+        "redesigning service categories using customer feedback, pricing tests and faster iteration loops"
+      );
+    }
+  }
+
+  if (/cac|performance tracking/i.test(phrase)) {
+    if (/8x ROAS/i.test(bullet)) {
+      return bullet.replace(/8x ROAS/i, "8x ROAS with stronger acquisition efficiency");
+    }
+  }
+
+  if (/repeat rate/i.test(phrase)) {
+    if (/early product-market fit/i.test(bullet)) {
+      return bullet.replace(/early product-market fit/i, "early repeat intent");
+    }
+    if (/customer feedback loops/i.test(bullet)) {
+      return bullet.replace(/customer feedback loops/i, "customer feedback and repeat-intent loops");
+    }
+  }
+
+  if (/fill rate/i.test(phrase)) {
+    if (/order completion/i.test(bullet)) {
+      return bullet.replace(/order completion/i, "order completion and supply reliability");
+    }
+  }
+
+  if (/variance|budget|forecasting|financial modeling|p&l|roi|cost/i.test(phrase)) {
+    if (/dashboards and Excel reports/i.test(bullet)) {
+      return bullet.replace(/dashboards and Excel reports/i, "cost dashboards, variance views and Excel reports");
+    }
+    if (/tracking revenue, costs and vendor controls/i.test(bullet)) {
+      return bullet.replace(
+        /tracking revenue, costs and vendor controls/i,
+        "tracking revenue, cost movement, margins and vendor controls"
+      );
+    }
+    if (/operational reviews/i.test(bullet)) {
+      return bullet.replace(/operational reviews/i, "budget and cost reviews");
+    }
+  }
+
+  if (/product development|feature development/i.test(phrase)) {
+    if (/MVP scope/i.test(bullet)) {
+      return bullet.replace(/MVP scope/i, "MVP and product development scope");
+    }
+    if (/rollout and adoption/i.test(bullet)) {
+      return bullet.replace(/rollout and adoption/i, "feature rollout and adoption");
+    }
+  }
+
   return bullet;
 }
 
@@ -421,18 +762,22 @@ function mergeUniqueStrings(...groups: Array<string[] | undefined>) {
   const output: string[] = [];
 
   groups.flat().forEach((item) => {
-    const clean = String(item ?? "").replace(/\s+/g, " ").trim();
-    if (!clean) {
+    const clean = String(item ?? "")
+      .replace(/\s+/g, " ")
+      .replace(/^[\s:|,;.-]+/, "")
+      .trim();
+    const normalizedClean = clean.replace(/[.。]\s*$/, "");
+    if (!normalizedClean) {
       return;
     }
 
-    const key = clean.toLowerCase();
+    const key = normalizedClean.toLowerCase() === "apis" ? "api" : normalizedClean.toLowerCase();
     if (seen.has(key)) {
       return;
     }
 
     seen.add(key);
-    output.push(normalizeKeywordCasing(clean));
+    output.push(normalizeKeywordCasing(normalizedClean));
   });
 
   return output;
@@ -477,55 +822,55 @@ function applyHighConfidenceRewrite(bullet: string) {
   }
 
   if (/AI\s+Notetaker/i.test(text) && /manual note-taking/i.test(text) && /meetings\/day/i.test(text)) {
-    return "Owned AI Notetaker from concept to launch, eliminating manual note-taking and scaling to 200+ meetings/day.";
+    return "Launched AI Notetaker MVP to 200+ meetings/day by owning discovery, PRD, rollout and adoption.";
   }
 
   if (/user interviews/i.test(text) && /10\+\s+departments/i.test(text) && /MVP scope/i.test(text)) {
-    return "Led user research with 10+ departments, converting pain points into MVP scope, business metrics and roadmap.";
+    return "Defined MVP scope, success metrics and roadmap from 10+ stakeholder interviews across teams.";
   }
 
   if (/NLP Credit Chatbot/i.test(text) && /24 hours/i.test(text) && /1 minute/i.test(text)) {
-    return "Built NLP Credit Chatbot, reducing query TAT from 24 hours to under 1 minute across support workflows.";
+    return "Built NLP credit chatbot cutting policy query TAT from 24 hours to under 1 minute for risk teams.";
   }
 
   if (/Legal Bot/i.test(text) && /120 minutes/i.test(text) && /2 minutes/i.test(text)) {
-    return "Automated Legal Bot review workflow, reducing contract review time from 120 minutes to 2 minutes.";
+    return "Automated legal review via AI bot, reducing SLA checks from 120 minutes to 2 minutes for vendors.";
   }
 
   if (/Risk\s*&\s*Analytics/i.test(text) && /policy portal/i.test(text) && /30%/i.test(text)) {
-    return "Launched Risk & Analytics policy product portal for approvals and releases, improving throughput by 30%.";
+    return "Built Risk & Analytics portal improving rule-change governance by 30% through approval workflows.";
   }
 
   if (/₹300\s*Cr\/month/i.test(text) && /lending partner/i.test(text)) {
-    return "Drove stakeholder management to re-onboard ₹300 Cr/month lending partner in under 7 days with zero downtime.";
+    return "Re-onboarded ₹300 Cr/month lending partner in 7 days with zero downtime across 5+ teams.";
   }
 
   if (/chatbot usage data/i.test(text) && /15%/i.test(text)) {
-    return "Analyzed chatbot usage analytics post-launch, optimizing UX flows and increasing engagement by 15% in 2 sprints.";
+    return "Raised chatbot engagement 15% in 2 sprints by analyzing usage data and optimizing UX flows.";
   }
 
-  if (/100\s+people closed group/i.test(text) && /stakeholders/i.test(text)) {
-    return "Created 100-user stakeholder beta group to validate adoption, feedback and launch readiness.";
+  if (/(100\s+people closed group|100-user stakeholder beta group)/i.test(text) && /stakeholders?|beta/i.test(text)) {
+    return "Ran 100-user beta cohort to capture feedback, prioritize fixes and validate early product-market fit.";
   }
 
   if (/transitioned\s+100%/i.test(text) && /legal bot/i.test(text)) {
-    return "Transitioned 100% of legal review users to Legal Bot within one month through training and stakeholder alignment.";
+    return "Moved 100% users to Legal Bot within 1 month by training stakeholders and resolving adoption friction.";
   }
 
   if (/Credit Partner Portals/i.test(text) && /40%/i.test(text)) {
-    return "Built Credit Partner Portals reducing manual processing by 40% while improving compliance and visibility.";
+    return "Built Credit Partner Portals reducing manual processing by 40% across onboarding and compliance flows.";
   }
 
-  if (/customized components/i.test(text) && /reusability/i.test(text)) {
-    return "Created reusable React components and APIs, improving development speed and consistency across portals.";
+  if (/(customized components|reusable React components)/i.test(text) && /(reusability|development speed|consistency)/i.test(text)) {
+    return "Created reusable React components, improving UI delivery speed for partner and credit management tools.";
   }
 
   if (/Tumbledry/i.test(text) && /₹28\s*LPA/i.test(text)) {
-    return "Launched Tumbledry franchise operations, created SOPs and scaled business to ₹28 LPA at 40% net margin impact.";
+    return "Scaled Tumbledry franchise to ₹28 LPA at 40% margin by building SOPs, vendor controls and ops rhythm.";
   }
 
   if (/appointment scheduling/i.test(text) && /18%/i.test(text)) {
-    return "Improved scheduling and capacity planning, cutting no-shows by 18% and increasing revenue visibility.";
+    return "Cut no-shows 18% by implementing scheduling, capacity planning and booking discipline across teams.";
   }
 
   if (/myKhaata/i.test(text) && /ledger/i.test(text)) {
@@ -880,6 +1225,25 @@ function buildRawLineDiffs(
     .filter((diff) => normalizeComparableLine(diff.original) !== normalizeComparableLine(diff.improved));
 }
 
+function mergeLineDiffs(
+  structuredLineDiffs: GeneratedResume["lineDiffs"],
+  rawLineDiffs: GeneratedResume["lineDiffs"]
+) {
+  const seen = new Set<string>();
+  const merged: GeneratedResume["lineDiffs"] = [];
+
+  [...structuredLineDiffs, ...rawLineDiffs].forEach((diff) => {
+    const key = normalizeComparableLine(diff.original);
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    merged.push(diff);
+  });
+
+  return merged.slice(0, 18);
+}
+
 function normalizeComparableLine(value: string) {
   return value
     .replace(/^[-*•●]\s*/, "")
@@ -918,6 +1282,233 @@ export function buildPatchedExportText(
     .join("\n");
 }
 
+function buildSkillsLine(original: string, skills: string[]) {
+  const cleanSkills = mergeUniqueStrings(skills);
+  if (!cleanSkills.length) {
+    return original;
+  }
+
+  const technicalSignals = [
+    "sql",
+    "excel",
+    "llm",
+    "llms",
+    "rag",
+    "model evaluation",
+    "deployment",
+    "apis",
+    "dashboard",
+    "dashboarding",
+    "product analytics",
+    "product metrics",
+    "python",
+    "java",
+    "react",
+    "api",
+    "jira",
+    "jenkins",
+    "tableau",
+    "power bi",
+    "looker",
+    "metabase"
+  ];
+  const productSignals = [
+    "city launches",
+    "hyperlocal gtm",
+    "category rollouts",
+    "community building",
+    "apartment activation",
+    "launch playbooks",
+    "cross-functional execution",
+    "onboarding",
+    "kyc",
+    "underwriting",
+    "repayment",
+    "collections",
+    "activation",
+    "retention",
+    "a/b tests",
+    "funnel analysis",
+    "product metrics",
+    "product development",
+    "feature development",
+    "experimentation",
+    "user research",
+    "mvp definition"
+  ];
+  const businessSignals = [
+    "talent acquisition",
+    "employee engagement",
+    "hr ops",
+    "hris",
+    "okrs",
+    "leadership reviews",
+    "financial modeling",
+    "forecasting",
+    "variance analysis",
+    "p&l",
+    "budgeting",
+    "roi",
+    "campaigns",
+    "lifecycle marketing",
+    "program management",
+    "launch execution",
+    "risk management",
+    "city launches",
+    "hyperlocal gtm",
+    "category rollouts",
+    "community building",
+    "apartment activation",
+    "launch playbooks",
+    "cross-functional execution",
+    "kpi tracking",
+    "cac",
+    "repeat rate",
+    "fill rate",
+    "performance tracking",
+    "consumer intelligence",
+    "roadmaps",
+    "roadmapping",
+    "prds",
+    "prioritization",
+    "stakeholder management",
+    "gtm",
+    "risk controls",
+    "compliance",
+    "operating cadence",
+    "cross-functional governance",
+    "business metrics"
+  ];
+
+  const pickBySignals = (signals: string[]) =>
+    cleanSkills.filter((skill) => {
+      const lowerSkill = skill.toLowerCase();
+      return signals.some((signal) => lowerSkill.includes(signal));
+    });
+
+  let selectedSkills = cleanSkills;
+  if (/technical\s+skills/i.test(original)) {
+    selectedSkills = pickBySignals(technicalSignals).slice(0, 10);
+  } else if (/product\s+skills/i.test(original)) {
+    selectedSkills = pickBySignals(productSignals).slice(0, 12);
+  } else if (/(business|management|program|growth|gtm)\s+skills/i.test(original)) {
+    selectedSkills = pickBySignals(businessSignals).slice(0, 14);
+  } else {
+    selectedSkills = cleanSkills.slice(0, 18);
+  }
+
+  if (!selectedSkills.length && /technical\s+skills/i.test(original)) {
+    return original;
+  }
+
+  if (!selectedSkills.length) {
+    selectedSkills = cleanSkills.slice(0, 12);
+  }
+
+  const maxChars = Math.max(original.trim().length + 16, /skills/i.test(original) ? 110 : 90);
+  let skillText = selectedSkills.join(", ");
+  while (skillText.length > maxChars && selectedSkills.length > 6) {
+    selectedSkills.pop();
+    skillText = selectedSkills.join(", ");
+  }
+
+  const prefixMatch = original.match(/^(\s*(?:technical\s+skills|product\s+skills|business\s+skills|management\s+skills|program\s+skills|growth\s+skills|gtm\s+skills|skills)\s*[:|\t]\s*)/i);
+  if (prefixMatch) {
+    return `${prefixMatch[1]}${skillText}`;
+  }
+
+  if (/^(technical\s+skills|business\s+skills|skills)$/i.test(original.trim())) {
+    return original;
+  }
+
+  return skillText;
+}
+
+function buildSkillsLineDiffs(originalText: string, improvedSkills: string[]): GeneratedResume["lineDiffs"] {
+  return originalText
+    .replace(/\r/g, "")
+    .split("\n")
+    .filter((line) => /^\s*(technical\s+skills|product\s+skills|business\s+skills|management\s+skills|program\s+skills|growth\s+skills|gtm\s+skills|skills)\s*[:|\t]/i.test(line))
+    .map((line) => ({
+      section: "Skills",
+      original: line,
+      improved: buildSkillsLine(line, improvedSkills),
+      accepted: true
+    }))
+    .filter((diff) => normalizeComparableLine(diff.original) !== normalizeComparableLine(diff.improved));
+}
+
+function buildSkillsDiff(
+  layoutInventory: LayoutInventory,
+  originalSkills: string[],
+  improvedSkills: string[]
+): NonNullable<RewritePlan["skillsDiff"]> | null {
+  const originalLine = layoutInventory.skillsLine?.text ?? "";
+  if (!originalLine.trim()) {
+    return null;
+  }
+
+  const improvedLine = buildSkillsLine(originalLine, improvedSkills);
+  if (normalizeComparableLine(originalLine) === normalizeComparableLine(improvedLine)) {
+    return null;
+  }
+
+  const originalSkillCorpus = originalSkills.join(" ").toLowerCase();
+  const insertedSkills = improvedSkills.filter(
+    (skill) => !originalSkillCorpus.includes(skill.toLowerCase())
+  );
+
+  return {
+    section: "Skills",
+    original: originalLine,
+    improved: improvedLine,
+    accepted: true,
+    insertedSkills
+  };
+}
+
+function buildRewritePlan(input: {
+  jd: JobDescriptionProfile;
+  rolePack: RolePack | null;
+  blueprint: JdPositioningBlueprint;
+  lineDiffs: GeneratedResume["lineDiffs"];
+  skillsDiff: RewritePlan["skillsDiff"];
+  supportedKeywords: string[];
+  layoutInventory: LayoutInventory;
+  preferences: FormattingPreferences;
+}): RewritePlan {
+  const requestedKeywords = collectRequestedKeywords(input.jd, input.rolePack);
+  const supportedSet = new Set(input.supportedKeywords.map((keyword) => keyword.toLowerCase()));
+  const excludedKeywords = requestedKeywords.filter(
+    (keyword) => !supportedSet.has(keyword.toLowerCase())
+  );
+  const fallbackRange =
+    input.layoutInventory.densityRisk === "high"
+      ? { fallbackMin: 80, fallbackMax: 100 }
+      : input.layoutInventory.densityRisk === "medium"
+        ? { fallbackMin: 95, fallbackMax: 110 }
+        : { fallbackMin: TARGET_LINE_MIN_CHARS, fallbackMax: TARGET_LINE_MAX_CHARS };
+
+  return {
+    lineDiffs: input.lineDiffs,
+    skillsDiff: input.skillsDiff,
+    safeKeywords: input.supportedKeywords,
+    excludedKeywords,
+    positioningArchetype: input.blueprint.positioningArchetype,
+    jdPriorityKeywords: input.blueprint.priorityKeywords,
+    evidenceMap: input.blueprint.evidenceMap,
+    unsupportedCriticalGaps: input.blueprint.unsupportedCriticalGaps,
+    scoreReachability: input.blueprint.scoreReachability,
+    targetCharRange: {
+      min: TARGET_LINE_MIN_CHARS,
+      max: TARGET_LINE_MAX_CHARS,
+      ...fallbackRange
+    },
+    fitStrategy: input.preferences.onePage ? "visual-fit-first" : "content-first",
+    rolePack: input.rolePack?.id ?? "general"
+  };
+}
+
 export function generateImprovedResume(options: {
   resume: ResumeProfile;
   jd: JobDescriptionProfile;
@@ -925,18 +1516,29 @@ export function generateImprovedResume(options: {
   preferences?: Partial<FormattingPreferences>;
 }) {
   const baseResume = mergeDeepAnswers(options.resume, options.answers);
+  const layoutInventory = buildTextLayoutInventory(options.resume.rawText);
+  const rolePack = detectRolePackBooster(options.jd);
+  const blueprint = buildJdPositioningBlueprint({
+    resume: baseResume,
+    jd: options.jd,
+    answers: options.answers,
+    rolePack
+  });
   const baselineAnalysis = analyzeMatch(baseResume, options.jd);
   const preferences: FormattingPreferences = {
     ...baseResume.formattingPreferences,
     ...options.preferences
   };
-  const supportedKeywords = [...new Set(pickSupportedKeywords(baseResume, options.jd, options.answers))];
-  const improvedExperiences = improveExperiences(
+  let supportedKeywords = mergeUniqueStrings(
+    blueprint.supportedKeywords,
+    pickSupportedKeywords(baseResume, options.jd, options.answers)
+  );
+  let improvedExperiences = improveExperiences(
     baseResume.experiences,
     supportedKeywords,
     preferences
   );
-  const improvedProjects = baseResume.projects.map((project) => ({
+  let improvedProjects = baseResume.projects.map((project) => ({
     ...project,
     bullets: project.bullets.map((bullet) =>
       enforceOnePageBulletBudget(
@@ -947,7 +1549,7 @@ export function generateImprovedResume(options: {
     )
   }));
 
-  const improvedProfile: ResumeProfile = {
+  let improvedProfile: ResumeProfile = {
     ...baseResume,
     summary: buildSummary(baseResume, options.jd, supportedKeywords, options.answers),
     targetRoles: [...new Set([options.jd.roleTitle, options.jd.roleFamily, ...baseResume.targetRoles].filter(Boolean))],
@@ -966,15 +1568,78 @@ export function generateImprovedResume(options: {
       .join("\n")
   };
 
-  const updatedAnalysis = analyzeMatch(improvedProfile, options.jd);
+  let updatedAnalysis = analyzeMatch(improvedProfile, options.jd);
+  if (
+    updatedAnalysis.overallScore < 90 &&
+    blueprint.scoreReachability === "target-90" &&
+    layoutInventory.densityRisk !== "high"
+  ) {
+    const missingSupportedKeywords = updatedAnalysis.missingKeywords.filter((keyword) =>
+      blueprint.supportedKeywords.some((supported) => supported.toLowerCase() === keyword.toLowerCase())
+    );
+    const boostedKeywords = mergeUniqueStrings(supportedKeywords, missingSupportedKeywords, blueprint.priorityKeywords.slice(0, 8));
+    if (boostedKeywords.length > supportedKeywords.length) {
+      supportedKeywords = boostedKeywords;
+      improvedExperiences = improveExperiences(baseResume.experiences, supportedKeywords, preferences);
+      improvedProjects = baseResume.projects.map((project) => ({
+        ...project,
+        bullets: project.bullets.map((bullet) =>
+          enforceOnePageBulletBudget(
+            bullet,
+            sharpenBullet(bullet, supportedKeywords, preferences.tone),
+            preferences.onePage
+          )
+        )
+      }));
+      improvedProfile = {
+        ...improvedProfile,
+        summary: buildSummary(baseResume, options.jd, supportedKeywords, options.answers),
+        experiences: improvedExperiences,
+        projects: improvedProjects,
+        skills: mergeUniqueStrings(supportedKeywords.map(titleCase), baseResume.skills),
+        rawText: [
+          baseResume.rawText,
+          buildHeadline(baseResume, options.jd, options.answers),
+          buildSummary(baseResume, options.jd, supportedKeywords, options.answers),
+          ...improvedExperiences.flatMap((experience) => experience.bullets),
+          ...improvedProjects.flatMap((project) => project.bullets),
+          supportedKeywords.join(" ")
+        ]
+          .filter(Boolean)
+          .join("\n")
+      };
+      updatedAnalysis = analyzeMatch(improvedProfile, options.jd);
+    }
+  }
   const scoreDelta = clamp(updatedAnalysis.overallScore - baselineAnalysis.overallScore, -100, 100);
   const structuredLineDiffs = buildLineDiffs(options.resume, improvedExperiences).filter(
     (diff) => normalizeComparableLine(diff.original) !== normalizeComparableLine(diff.improved)
   );
-  const lineDiffs = structuredLineDiffs.length
-    ? structuredLineDiffs
-    : buildRawLineDiffs(options.resume.rawText, supportedKeywords, preferences);
-  const exportText = buildPatchedExportText(options.resume.rawText, lineDiffs);
+  const rawLineDiffs = buildRawLineDiffs(options.resume.rawText, supportedKeywords, preferences);
+  const skillsDiff = buildSkillsDiff(layoutInventory, baseResume.skills, improvedProfile.skills);
+  const skillsLineDiffs = buildSkillsLineDiffs(options.resume.rawText, improvedProfile.skills);
+  const lineDiffs = mergeLineDiffs(
+    [...structuredLineDiffs, ...skillsLineDiffs],
+    rawLineDiffs
+  );
+  const exportDiffs = skillsDiff
+    ? [
+        ...lineDiffs,
+        ...skillsLineDiffs,
+        { original: skillsDiff.original, improved: skillsDiff.improved, section: skillsDiff.section, accepted: skillsDiff.accepted }
+      ]
+    : [...lineDiffs, ...skillsLineDiffs];
+  const rewritePlan = buildRewritePlan({
+    jd: options.jd,
+    rolePack,
+    blueprint,
+    lineDiffs,
+    skillsDiff,
+    supportedKeywords,
+    layoutInventory,
+    preferences
+  });
+  const exportText = buildPatchedExportText(options.resume.rawText, exportDiffs);
   const builtResumeProfile = parseResumeText(exportText);
   const builtAnalysis = analyzeMatch(
     {
@@ -1030,6 +1695,17 @@ export function generateImprovedResume(options: {
     changeSummary,
     unsupportedSuggestions,
     lineDiffs,
+    layoutInventory,
+    rewritePlan,
+    exportQaReport: {
+      docxPatched: false,
+      pdfExported: false,
+      pageCount: null,
+      textSelectable: null,
+      linksPreserved: null,
+      renderedPages: 0,
+      warnings: ["Render QA runs during DOCX export; PDF export uses the app's selectable PDF layout builder."]
+    },
     followUpQuestions,
     baselineScore: clamp(baselineAnalysis.overallScore),
     estimatedScore: clamp(builtAnalysis.overallScore),

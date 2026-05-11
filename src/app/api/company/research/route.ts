@@ -136,6 +136,10 @@ function scoreCompensation(ctc: string, description: string) {
   return { score: 40, min, max, label: "Low package" };
 }
 
+function hasAnySignal(...groups: ResearchSignal[][]) {
+  return groups.some((group) => group.length > 0);
+}
+
 function inferRoleLevel(title: string, description: string) {
   const text = `${title} ${description}`.toLowerCase();
   if (/\b(intern|trainee)\b/.test(text)) return "intern";
@@ -218,6 +222,7 @@ export async function POST(request: Request) {
       fetchHnSignals(company),
       fetchRedditSignals(company)
     ]);
+    const hasPublicSignals = hasAnySignal(gdelt, hn, reddit);
     const signals = [...gdelt, ...hn, ...reddit].slice(0, 14);
     const signalText = signals.map((signal) => signal.text).join(" ");
     const negativeCulture = includesAny(signalText, NEGATIVE_CULTURE);
@@ -227,13 +232,29 @@ export async function POST(request: Request) {
     const compensation = scoreCompensation(ctc, description);
     const rolePay = scoreRolePay(title, description, compensation.max);
 
-    const culture = clamp(70 + positiveCulture.length * 5 - negativeCulture.length * 12);
-    const stability = clamp(70 + positiveStability.length * 5 - negativeStability.length * 16);
+    if (!hasPublicSignals && !compensation.max) {
+      return NextResponse.json(
+        {
+          error:
+            "Company research needs public signals or disclosed compensation. No reliable no-key source returned evidence for this company."
+        },
+        { status: 424 }
+      );
+    }
+
+    const culture = hasPublicSignals
+      ? clamp(62 + positiveCulture.length * 6 - negativeCulture.length * 14)
+      : 55;
+    const stability = hasPublicSignals
+      ? clamp(62 + positiveStability.length * 6 - negativeStability.length * 18)
+      : 55;
+    const evidencePenalty = hasPublicSignals ? 0 : 10;
     const score = Math.round(
       compensation.score * 0.35 +
         culture * 0.25 +
         stability * 0.25 +
-        rolePay * 0.15
+        rolePay * 0.15 -
+        evidencePenalty
     );
 
     const citations: Citation[] = signals.slice(0, 8).map((signal) => ({
@@ -295,7 +316,7 @@ export async function POST(request: Request) {
         summary:
           signals.length > 0
             ? `${company} was scored on pay, culture risk, stability risk, and role-pay fit using ${signals.length} public no-key signal(s). Treat this as directional, not a final verdict.`
-            : `${company} was scored mostly on package and role-pay fit because public culture/stability signals were not available from no-key sources.`,
+            : `${company} was scored only on disclosed package and inferred role-pay fit because public culture/stability sources returned no evidence.`,
         breakdown: {
           compensation: Math.round(compensation.score),
           culture: Math.round(culture),

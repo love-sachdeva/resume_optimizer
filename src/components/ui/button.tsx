@@ -9,12 +9,12 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "bg-ink text-bone shadow-soft hover:-translate-y-0.5 hover:bg-black/90",
+    "border-2 border-primary bg-primary text-primary-foreground hover:border-foreground hover:bg-foreground hover:text-background",
   secondary:
-    "bg-cyan text-ink shadow-soft hover:-translate-y-0.5 hover:bg-cyan/85",
-  ghost: "bg-transparent text-ink hover:bg-black/5",
+    "border-2 border-foreground bg-foreground text-background hover:border-primary hover:bg-primary hover:text-primary-foreground",
+  ghost: "bg-transparent text-foreground hover:bg-foreground hover:text-background",
   outline:
-    "border border-black/10 bg-white/70 text-ink hover:-translate-y-0.5 hover:bg-white"
+    "border-2 border-foreground bg-transparent text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground"
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
@@ -29,7 +29,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-full font-medium transition duration-200 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 font-medium transition duration-200 disabled:pointer-events-none disabled:opacity-50",
+          "mono uppercase tracking-[0.16em]",
           variantClasses[variant],
           sizeClasses[size],
           className

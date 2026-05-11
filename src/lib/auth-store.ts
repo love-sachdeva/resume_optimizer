@@ -17,7 +17,13 @@ export interface AccountProfile {
   googleToken?: string;
   isLoggedIn: boolean;
   services?: {
-    coach?: { email?: string; password?: string };
+    coach?: {
+      email?: string;
+      password?: string;
+      apiToken?: string;
+      userUuid?: string;
+      tokenExpiresAt?: string;
+    };
     linkedin?: { email?: string; password?: string };
   };
 }
@@ -106,7 +112,16 @@ export function signInAccount(account: Omit<AccountProfile, "isLoggedIn">) {
   });
 }
 
-export function saveServiceCredentials(service: "coach" | "linkedin", credentials: { email?: string; password?: string }) {
+export function saveServiceCredentials(
+  service: "coach" | "linkedin",
+  credentials: {
+    email?: string;
+    password?: string;
+    apiToken?: string;
+    userUuid?: string;
+    tokenExpiresAt?: string;
+  }
+) {
   return updateSettings((settings) => ({
     ...settings,
     account: {

@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const floatingCards = [
-  { label: "ATS fit", score: "84", color: "bg-cyan", x: "8%", y: "16%" },
-  { label: "Format lock", score: "DOCX", color: "bg-gold", x: "68%", y: "10%" },
-  { label: "Deep mode", score: "Adaptive", color: "bg-salmon", x: "70%", y: "66%" },
-  { label: "Export", score: "DOCX + PDF", color: "bg-ink", x: "16%", y: "70%" }
+  { label: "ATS fit", score: "84", x: "8%", y: "16%" },
+  { label: "Format lock", score: "DOCX", x: "68%", y: "10%" },
+  { label: "Deep mode", score: "Adaptive", x: "70%", y: "66%" },
+  { label: "Export", score: "DOCX + PDF", x: "16%", y: "70%" }
 ];
 
 const featureList = [
@@ -54,7 +54,7 @@ export function SwarmHero() {
               {featureList.map((feature) => (
                 <div
                   key={feature}
-                  className="rounded-[22px] border border-black/10 bg-white/72 px-4 py-3 text-sm text-black/72 shadow-soft"
+                  className="border-2 border-foreground bg-primary/10 px-4 py-3 text-sm text-foreground/72"
                 >
                   {feature}
                 </div>
@@ -82,7 +82,7 @@ export function SwarmHero() {
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6 }}
-            className="glass-panel absolute inset-8 rounded-[36px] border border-black/10 p-8 shadow-glow"
+            className="absolute inset-8 border-2 border-foreground bg-card p-8"
           >
             <div className="space-y-6">
               <div className="flex items-center justify-between">
@@ -90,19 +90,19 @@ export function SwarmHero() {
                   <p className="text-xs uppercase tracking-[0.28em] text-black/45">Three paths</p>
                   <p className="font-display text-2xl font-semibold">Choose the level you need.</p>
                 </div>
-                <div className="rounded-full bg-ink px-4 py-2 text-sm text-bone">One-page ready</div>
+                <div className="bg-primary px-4 py-2 text-sm text-primary-foreground">One-page ready</div>
               </div>
 
               <div className="grid gap-4">
                 {paths.map((path, index) => (
-                  <Card key={path.title} className="rounded-[24px] border-black/10 bg-white/80">
+                  <Card key={path.title}>
                     <CardContent className="flex items-start gap-4 p-5">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-black/5 text-sm font-medium">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-foreground bg-primary/10 text-sm font-medium text-primary">
                         0{index + 1}
                       </div>
                       <div>
                         <p className="font-medium">{path.title}</p>
-                        <p className="mt-1 text-sm text-black/62">{path.body}</p>
+                        <p className="mt-1 text-sm text-foreground/62">{path.body}</p>
                       </div>
                     </CardContent>
                   </Card>
@@ -119,7 +119,7 @@ export function SwarmHero() {
                   return (
                     <div
                       key={item.label}
-                      className="rounded-[20px] border border-black/10 bg-white/75 p-4 text-sm"
+                      className="border-2 border-foreground bg-card p-4 text-sm"
                     >
                       <ItemIcon className="mb-3 h-4 w-4" />
                       <p className="font-medium">{item.label}</p>
@@ -149,11 +149,11 @@ export function SwarmHero() {
                   duration: 7 + index,
                   ease: "easeInOut"
                 }}
-                className="w-40 rounded-[28px] border border-black/10 bg-white/88 p-4 shadow-soft backdrop-blur-lg"
+                className="w-40 border-2 border-foreground bg-card p-4 backdrop-blur-lg"
               >
-                <div className={`mb-3 h-2 w-12 rounded-full ${card.color}`} />
-                <p className="text-xs uppercase tracking-[0.18em] text-black/45">{card.label}</p>
-                <p className="mt-2 font-display text-xl font-semibold">{card.score}</p>
+                <div className="mb-3 h-2 w-12 bg-primary" />
+                <p className="mono text-xs uppercase tracking-[0.18em] text-foreground/45">{card.label}</p>
+                <p className="display mt-2 text-xl font-semibold">{card.score}</p>
               </motion.div>
             </motion.div>
           ))}

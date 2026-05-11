@@ -2,60 +2,194 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
+@layer base {
+  :root {
+    color-scheme: light;
+    --background: 38 28% 93%;
+    --foreground: 0 0% 6%;
+    --card: 38 28% 96%;
+    --card-foreground: 0 0% 6%;
+    --popover: 38 28% 96%;
+    --popover-foreground: 0 0% 6%;
+    --primary: 4 100% 56%;
+    --primary-foreground: 38 28% 96%;
+    --secondary: 0 0% 6%;
+    --secondary-foreground: 38 28% 96%;
+    --muted: 38 18% 88%;
+    --muted-foreground: 0 0% 30%;
+    --accent: 4 100% 56%;
+    --accent-foreground: 38 28% 96%;
+    --destructive: 4 100% 56%;
+    --destructive-foreground: 38 28% 96%;
+    --border: 0 0% 6%;
+    --input: 0 0% 6%;
+    --ring: 4 100% 56%;
+    --radius: 0px;
+  }
+
+  * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-inter), "Inter", "Avenir Next", "Segoe UI", sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--foreground) / 0.2);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
 }
 
-* {
-  box-sizing: border-box;
+@layer components {
+  .display {
+    font-family: var(--font-space-grotesk), "Space Grotesk", "Avenir Next Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.85;
+  }
+
+  .mono {
+    font-family: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
+    font-feature-settings: "tnum";
+  }
+
+  .mid-type {
+    font-family: var(--font-space-grotesk), "Space Grotesk", "Avenir Next Condensed", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    font-size: clamp(2.25rem, 7vw, 7rem);
+  }
+
+  .link-underline {
+    position: relative;
+    display: inline-block;
+  }
+
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    transform: scaleX(0);
+    transform-origin: right;
+    background: currentColor;
+    transition: transform 0.5s;
+  }
+
+  .link-underline:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  .marquee-track {
+    animation: marquee 28s linear infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-rise-in {
+    animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .grid-overlay {
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.055) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .glass-panel {
+    background: hsl(var(--background) / 0.72);
+    backdrop-filter: blur(18px);
+    border: 1px solid hsl(var(--foreground) / 0.12);
+  }
 }
 
-html {
-  scroll-behavior: smooth;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(117, 240, 214, 0.14), transparent 30%),
-    radial-gradient(circle at top right, rgba(247, 199, 108, 0.18), transparent 35%),
-    linear-gradient(180deg, #f8f4e8 0%, #f5f1e4 48%, #efe7d8 100%);
-  color: #111111;
-  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
-}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
 
-::selection {
-  background: rgba(117, 240, 214, 0.4);
-}
-
-.grid-overlay {
-  background-image:
-    linear-gradient(rgba(17, 17, 17, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 17, 17, 0.06) 1px, transparent 1px);
-  background-size: 36px 36px;
-}
-
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(17, 17, 17, 0.08);
-}
-
-.text-balance {
-  text-wrap: balance;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* ── Resume A4 Page Preview ────────────────────────────────── */
@@ -245,4 +379,3 @@ select {
   text-decoration: line-through;
   opacity: 0.6;
 }
-

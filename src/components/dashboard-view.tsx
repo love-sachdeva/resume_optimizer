@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SessionEmptyState } from "@/components/session-empty-state";
+import { SectionLabel } from "@/components/site/section-label";
 import { getSession, type StoredSession } from "@/lib/client-store";
 import { formatPercent } from "@/lib/utils";
 
@@ -80,18 +81,19 @@ export function DashboardView() {
   const firstDraftScore = Math.round(analysis.improvedResume.estimatedScore);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <div className="relative mx-auto max-w-7xl overflow-hidden px-6 py-12 lg:px-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_80%_0%,hsl(var(--primary)/0.10),transparent_60%)]" />
+      <div className="relative mb-8 flex flex-wrap items-start justify-between gap-6 border-b border-foreground/15 pb-8 animate-fade-in">
         <div className="space-y-3">
-          <Badge>Step 2</Badge>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
-            Match report for {analysis.jobDescriptionProfile.roleTitle || "the target role"}
+          <SectionLabel index="02">Resume analysis</SectionLabel>
+          <h1 className="mid-type max-w-5xl text-balance">
+            Match report for <span className="text-primary">{analysis.jobDescriptionProfile.roleTitle || "the target role"}</span>
           </h1>
-          <p className="max-w-3xl text-black/65">
+          <p className="max-w-3xl text-foreground/65">
             Actual ATS score is {baselineScore}/100. The first generated draft was rebuilt,
             parsed again, and rescored at {firstDraftScore}/100.
           </p>
-          <p className="text-sm text-black/50">
+          <p className="text-sm text-foreground/50">
             Runtime:{" "}
             {analysis.meta.runMode === "provider"
               ? `${analysis.meta.providerUsed} / ${analysis.meta.modelUsed}${
@@ -101,49 +103,49 @@ export function DashboardView() {
           </p>
           <div className="flex flex-wrap gap-2">
             {analysis.meta.stages.resumeExtraction ? (
-              <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-black/55">
+              <span className="mono border border-foreground/15 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground/60">
                 AI resume extraction
               </span>
             ) : null}
             {analysis.meta.stages.jdExtraction ? (
-              <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-black/55">
+              <span className="mono border border-foreground/15 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground/60">
                 AI JD extraction
               </span>
             ) : null}
             {analysis.meta.stages.rewrite ? (
-              <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.16em] text-black/55">
+              <span className="mono border border-foreground/15 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground/60">
                 AI rewrite
               </span>
             ) : null}
           </div>
         </div>
 
-        <div className="rounded-[30px] border border-black/10 bg-white/75 px-6 py-5 shadow-soft">
-          <p className="text-sm uppercase tracking-[0.18em] text-black/45">Overall ATS score</p>
-          <p className="font-display text-6xl font-semibold">{baselineScore}</p>
+        <div className="min-w-[260px] border-2 border-primary bg-primary px-6 py-5 text-primary-foreground">
+          <p className="mono text-[10px] uppercase tracking-[0.18em] opacity-75">Overall ATS score</p>
+          <p className="display text-7xl">{baselineScore}</p>
           <div className="mt-2 flex items-center gap-2">
-            <p className="text-sm text-black/55">
+            <p className="text-sm opacity-80">
               Source: <span className="font-medium uppercase">{source.originalFormat}</span>
             </p>
             <span
-              className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
+              className={`border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${
                 analysis.matchAnalysis.confidenceLevel === "high"
-                  ? "bg-emerald-100 text-emerald-700"
+                  ? "border-primary-foreground/50 bg-primary-foreground text-primary"
                   : analysis.matchAnalysis.confidenceLevel === "medium"
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-red-100 text-red-700"
+                    ? "border-primary-foreground/50 bg-primary-foreground/20 text-primary-foreground"
+                    : "border-primary-foreground bg-primary-foreground text-primary"
               }`}
             >
               {analysis.matchAnalysis.confidenceLevel} confidence
             </span>
           </div>
-          <div className="mt-4 rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.16em] text-emerald-800/70">
+          <div className="mt-4 border border-primary-foreground/35 bg-primary-foreground/10 px-4 py-3">
+            <p className="mono text-[10px] uppercase tracking-[0.16em] opacity-75">
               Rescored first draft
             </p>
             <div className="mt-2 flex items-end gap-3">
-              <p className="font-display text-3xl font-semibold">{firstDraftScore}</p>
-              <p className="pb-1 text-sm font-medium text-emerald-700">
+              <p className="display text-4xl">{firstDraftScore}</p>
+              <p className="pb-1 text-sm font-medium">
                 {analysis.improvedResume.scoreDelta >= 0 ? "+" : ""}
                 {Math.round(analysis.improvedResume.scoreDelta)} pts
               </p>
@@ -153,7 +155,7 @@ export function DashboardView() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-        <Card>
+        <Card className="animate-rise-in bg-background">
           <CardHeader>
             <CardTitle>Scoring breakdown</CardTitle>
             <CardDescription>Weighted factors behind the overall score.</CardDescription>
@@ -162,7 +164,7 @@ export function DashboardView() {
             {breakdownLabels.map(([key, label]) => {
               const value = analysis.matchAnalysis.breakdown[key];
               const colorClass =
-                value >= 70 ? "text-emerald-600" : value >= 50 ? "text-amber-600" : "text-red-500";
+                value >= 70 ? "text-primary" : value >= 50 ? "text-foreground" : "text-primary";
               const reason = breakdownReason(key, session);
               return (
                 <div key={key} className="space-y-2">
@@ -171,7 +173,7 @@ export function DashboardView() {
                     <span className={`font-medium ${colorClass}`}>{formatPercent(value)}</span>
                   </div>
                   <Progress value={value} />
-                  <p className="text-xs leading-5 text-black/48" title={reason}>
+                  <p className="text-xs leading-5 text-foreground/48" title={reason}>
                     {reason}
                   </p>
                 </div>
@@ -180,7 +182,7 @@ export function DashboardView() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden">
+        <Card className="animate-rise-in overflow-hidden bg-background [animation-delay:80ms]">
           <CardHeader>
             <CardTitle>Choose the next step</CardTitle>
             <CardDescription>Pick the amount of help you need for this application.</CardDescription>
@@ -203,12 +205,12 @@ export function DashboardView() {
               const Icon = item.icon;
               return (
                 <Link key={item.title} href={item.href}>
-                  <div className="rounded-[24px] border border-black/10 bg-white/72 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
+                  <div className="border border-foreground/15 bg-background p-4 transition hover:border-primary hover:bg-primary hover:text-primary-foreground">
                     <div className="mb-3 flex items-center justify-between">
                       <p className="font-medium">{item.title}</p>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <p className="text-sm text-black/62">{item.body}</p>
+                    <p className="text-sm opacity-70">{item.body}</p>
                   </div>
                 </Link>
               );
@@ -235,7 +237,7 @@ export function DashboardView() {
         ].map((block) => {
           const Icon = block.icon;
           return (
-            <Card key={block.title}>
+            <Card key={block.title} className="animate-rise-in bg-background [animation-delay:140ms]">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Icon className="h-5 w-5" />
@@ -246,7 +248,7 @@ export function DashboardView() {
                 {block.items.slice(0, 5).map((item) => (
                   <div
                     key={item}
-                    className="rounded-[18px] border border-black/10 bg-white/70 p-3 text-sm leading-6 text-black/70"
+                    className="border border-foreground/15 bg-primary/10 p-3 text-sm leading-6 text-foreground/70"
                   >
                     {item}
                   </div>

@@ -48,7 +48,9 @@ export async function POST(request: Request) {
       ? providerConfig 
       : null;
 
-    if (!activeProvider) {
+    const allowServerProviderFallback = process.env.ALLOW_SERVER_PROVIDER_FALLBACK === "true";
+
+    if (!activeProvider && allowServerProviderFallback) {
       if (process.env.OPENAI_API_KEY) {
         activeProvider = { provider: "openai", apiKey: process.env.OPENAI_API_KEY, model: "gpt-4o-mini", enabled: true };
       } else if (process.env.GEMINI_API_KEY) {

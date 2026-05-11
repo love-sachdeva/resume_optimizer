@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 
 export default function AccountPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <Suspense fallback={null}>
         <AccountView />

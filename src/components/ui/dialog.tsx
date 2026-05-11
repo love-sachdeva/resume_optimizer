@@ -88,13 +88,13 @@ export function DialogContent({ children, className }: { children: React.ReactNo
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className={cn(
-              "relative w-full max-w-lg overflow-hidden rounded-[32px] bg-white p-6 shadow-2xl",
+              "relative w-full max-w-lg overflow-hidden border-2 border-foreground bg-background p-6 shadow-2xl",
               className
             )}
           >
             <button
               onClick={() => context.setOpen(false)}
-              className="absolute right-6 top-6 z-20 rounded-full bg-white/80 p-2 text-black/30 shadow-sm transition-colors hover:bg-black/5 hover:text-black"
+              className="absolute right-6 top-6 z-20 border border-foreground/15 bg-background p-2 text-foreground/35 transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
             >
               <X className="h-5 w-5" />
             </button>
@@ -115,5 +115,5 @@ export function DialogTitle({ children, className }: { children: React.ReactNode
 }
 
 export function DialogDescription({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <p className={cn("text-sm text-black/50", className)}>{children}</p>;
+  return <p className={cn("text-sm text-foreground/50", className)}>{children}</p>;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   ArrowRight,
   Briefcase,
@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionLabel } from "@/components/site/section-label";
 import { createSession, dataUrlToFile, fileToDataUrl } from "@/lib/client-store";
 import { getProfileMemory } from "@/lib/profile-store";
 import {
@@ -136,19 +137,20 @@ export function UploadWorkspace() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
-      <div className="mb-8 space-y-3">
-        <Badge>Improve Resume</Badge>
-        <h1 className="font-display text-4xl font-semibold tracking-tight">
-          Surgical ATS Optimization
+    <div className="relative mx-auto max-w-7xl overflow-hidden px-6 py-12 lg:px-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(ellipse_at_20%_0%,hsl(var(--primary)/0.10),transparent_60%)]" />
+      <div className="relative mb-8 border-b border-foreground/15 pb-8 animate-fade-in">
+        <SectionLabel index="01">Analyze resume</SectionLabel>
+        <h1 className="mid-type mt-5 max-w-4xl text-balance">
+          Surgical ATS <span className="text-primary">optimization.</span>
         </h1>
-        <p className="max-w-2xl text-black/65">
+        <p className="mt-4 max-w-2xl text-foreground/65">
           Upload your base resume and the target job description. We'll optimize the content while preserving your exact template structure.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mb-8">
-        <Card className="rounded-[32px] border-black/5 bg-white shadow-sm">
+      <div className="mb-8 grid gap-6 lg:grid-cols-2">
+        <Card className="animate-rise-in bg-background">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileArchive className="h-5 w-5" />
@@ -169,8 +171,10 @@ export function UploadWorkspace() {
                         setResumeFile(null);
                         setResumeText("");
                       }}
-                      className={`rounded-full px-4 py-2 text-sm transition ${
-                        selectedSavedResumeId === item.id ? "bg-ink text-bone" : "bg-black/5 text-black/65 hover:bg-black/10"
+                      className={`mono border px-4 py-2 text-[11px] uppercase tracking-[0.16em] transition ${
+                        selectedSavedResumeId === item.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-foreground/20 text-foreground/60 hover:border-primary hover:text-primary"
                       }`}
                     >
                       {item.domain}: {item.label}
@@ -178,8 +182,8 @@ export function UploadWorkspace() {
                   ))}
                   <button
                     onClick={() => { setSelectedSavedResumeId(""); setResumeFile(null); }}
-                    className={`rounded-full px-4 py-2 text-sm border border-dashed transition ${
-                       !selectedSavedResumeId ? "border-ink text-ink bg-ink/5" : "border-black/10 text-black/40"
+                    className={`mono border border-dashed px-4 py-2 text-[11px] uppercase tracking-[0.16em] transition ${
+                       !selectedSavedResumeId ? "border-primary bg-primary/10 text-primary" : "border-foreground/20 text-foreground/45"
                     }`}
                   >
                     + New
@@ -189,9 +193,9 @@ export function UploadWorkspace() {
             ) : null}
             
             {!selectedSavedResumeId && (
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-[28px] border border-dashed border-black/15 bg-white/60 px-5 py-8 text-center transition hover:bg-black/5">
-                <UploadCloud className="mb-2 h-6 w-6 text-black/45" />
-                <span className="font-medium text-sm">Drop resume here or click</span>
+                <label className="flex cursor-pointer flex-col items-center justify-center border-2 border-dashed border-foreground/20 bg-primary/10 px-5 py-10 text-center transition hover:border-primary hover:bg-primary/15">
+                <UploadCloud className="mb-3 h-7 w-7 text-primary" />
+                <span className="mono text-[11px] uppercase tracking-[0.18em]">Drop resume here or click</span>
                 <Input
                     type="file"
                     className="hidden"
@@ -202,19 +206,19 @@ export function UploadWorkspace() {
             )}
             
             {resumeFile ? (
-              <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/50 p-4 text-sm flex items-center justify-between">
+              <div className="flex items-center justify-between border border-primary/30 bg-primary/10 p-4 text-sm">
                 <span>Selected: <span className="font-bold">{resumeFile.name}</span></span>
-                <button onClick={() => setResumeFile(null)} className="text-black/30 hover:text-red-500">Remove</button>
+                <button onClick={() => setResumeFile(null)} className="text-foreground/40 hover:text-primary">Remove</button>
               </div>
             ) : selectedSavedResumeId ? (
-                <div className="rounded-[22px] border border-blue-100 bg-blue-50/50 p-4 text-sm">
+                <div className="border border-primary/30 bg-primary/10 p-4 text-sm">
                     Using saved resume from library.
                 </div>
             ) : null}
           </CardContent>
         </Card>
 
-        <Card className="rounded-[32px] border-black/5 bg-white shadow-sm">
+        <Card className="animate-rise-in bg-background [animation-delay:80ms]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5" />
@@ -227,29 +231,29 @@ export function UploadWorkspace() {
               placeholder="Paste the job description here..."
               value={jobText}
               onChange={(e) => setJobText(e.target.value)}
-              className="min-h-[160px] w-full rounded-[24px] border border-black/10 bg-white/60 p-5 text-sm transition focus:outline-none focus:ring-2 focus:ring-ink/10"
+              className="min-h-[190px] p-5"
             />
           </CardContent>
         </Card>
       </div>
 
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-6 p-6 rounded-[32px] border border-black/5 bg-white shadow-sm">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-6 border-2 border-foreground bg-background p-6 animate-rise-in [animation-delay:140ms]">
           <div className="flex flex-wrap gap-4">
-            <div className="flex items-center gap-3 bg-black/5 px-4 py-2 rounded-full">
+            <div className="flex items-center gap-3 border border-foreground/15 px-4 py-3">
                 <Switch checked={keepSameFormat} onCheckedChange={setKeepSameFormat} />
-                <span className="text-sm font-medium">Keep original format (DOCX)</span>
+                <span className="mono text-[11px] uppercase tracking-[0.16em]">Keep original format</span>
             </div>
-            <div className="flex items-center gap-3 bg-black/5 px-4 py-2 rounded-full">
+            <div className="flex items-center gap-3 border border-foreground/15 px-4 py-3">
                 <Switch checked={onePage} onCheckedChange={setOnePage} />
-                <span className="text-sm font-medium">Enforce 1-Page limit</span>
+                <span className="mono text-[11px] uppercase tracking-[0.16em]">Enforce 1-page limit</span>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            {error && <p className="text-sm text-red-600 max-w-xs">{error}</p>}
+            {error && <p className="max-w-xs border border-primary bg-primary/10 px-3 py-2 text-sm text-primary">{error}</p>}
             <Button
                 size="lg"
-                className="rounded-full bg-ink text-bone h-14 px-10 font-bold shadow-soft hover:scale-105 transition-all disabled:opacity-50"
+                className="h-14 px-10 font-bold"
                 onClick={handleSubmit}
                 disabled={isPending || (!resumeFile && !selectedSavedResumeId) || !jobText.trim()}
             >

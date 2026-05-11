@@ -4,10 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Download, FileArchive, FileText, LoaderCircle, ShieldCheck } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResumePreview } from "@/components/resume-preview";
+import { SectionLabel } from "@/components/site/section-label";
 import { SessionEmptyState } from "@/components/session-empty-state";
 import { dataUrlToFile, downloadBlob, getSession, type StoredSession } from "@/lib/client-store";
 
@@ -19,7 +19,7 @@ export function ExportView() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const pdfExportAvailable = false;
+  const pdfExportAvailable = true;
 
   useEffect(() => {
     setSession(getSession(sessionId));
@@ -151,13 +151,14 @@ export function ExportView() {
     .replace(/\s+/g, "-")}-thankyoulove`;
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
+    <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10">
+      <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 bg-primary/10 blur-3xl" />
       <div className="mb-8 space-y-3">
-        <Badge>Step 5</Badge>
-        <h1 className="font-display text-4xl font-semibold tracking-tight">
+        <SectionLabel index="05">Export assets</SectionLabel>
+        <h1 className="mid-type max-w-4xl text-4xl font-semibold tracking-tight">
           Export the resume and recruiter-ready note
         </h1>
-        <p className="max-w-3xl text-black/65">
+        <p className="max-w-3xl text-foreground/65">
           The app names the file from the candidate and target company, keeps the resume one-page,
           and prefers reusing the uploaded `DOCX` as the style template whenever it is available.
         </p>
@@ -170,35 +171,35 @@ export function ExportView() {
             <CardDescription>Source format and preservation confidence.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-4">
-              <p className="text-sm uppercase tracking-[0.18em] text-black/45">Naming preview</p>
-              <p className="mt-2 break-words font-medium text-black">{namingPreview}</p>
+            <div className="border-2 border-foreground bg-primary/10 p-4">
+              <p className="mono text-sm uppercase tracking-[0.18em] text-foreground/50">Naming preview</p>
+              <p className="mt-2 break-words font-medium text-foreground">{namingPreview}</p>
             </div>
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-4">
-              <p className="text-sm uppercase tracking-[0.18em] text-black/45">Layout lock</p>
-              <p className="mt-2 font-medium text-black">
+            <div className="border-2 border-foreground bg-card p-4">
+              <p className="mono text-sm uppercase tracking-[0.18em] text-foreground/50">Layout lock</p>
+              <p className="mt-2 font-medium text-foreground">
                 {session.source.originalFormat === "docx"
                   ? "Original DOCX template is edited directly. Fonts, spacing, tabs, and margins stay tied to the uploaded file."
                   : "Exact format preservation is only trusted when the source file is DOCX."}
               </p>
             </div>
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-4">
-              <p className="text-sm uppercase tracking-[0.18em] text-black/45">One-page intent</p>
-              <p className="mt-2 font-medium text-black">
+            <div className="border-2 border-foreground bg-card p-4">
+              <p className="mono text-sm uppercase tracking-[0.18em] text-foreground/50">One-page intent</p>
+              <p className="mt-2 font-medium text-foreground">
                 {session.analysis.resumeProfile.formattingPreferences.onePage ? "Enabled" : "Disabled"}
               </p>
             </div>
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-4">
-              <p className="text-sm uppercase tracking-[0.18em] text-black/45">AI status</p>
-              <p className="mt-2 text-sm leading-6 text-black/72">
+            <div className="border-2 border-foreground bg-card p-4">
+              <p className="mono text-sm uppercase tracking-[0.18em] text-foreground/50">AI status</p>
+              <p className="mt-2 text-sm leading-6 text-foreground/70">
                 {session.analysis.meta.runMode === "provider" && !session.analysis.meta.fallbackUsed
                   ? `Provider-backed analysis completed via ${session.analysis.meta.providerUsed}.`
                   : "Current version was generated using the local fallback engine."}
               </p>
             </div>
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-4">
-              <p className="text-sm uppercase tracking-[0.18em] text-black/45">ATS change</p>
-              <p className="mt-2 font-medium text-black">
+            <div className="border-2 border-primary bg-primary p-4 text-primary-foreground">
+              <p className="mono text-sm uppercase tracking-[0.18em] text-primary-foreground/70">ATS change</p>
+              <p className="mt-2 font-medium">
                 {Math.round(session.improvedResume.baselineScore)} to{" "}
                 {Math.round(session.improvedResume.estimatedScore)}
                 {" · "}
@@ -228,36 +229,29 @@ export function ExportView() {
                 className="justify-between"
               >
                 {pdfLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                PDF unavailable
+                Export PDF
                 <Download className="h-4 w-4" />
               </Button>
             </div>
 
-            {!pdfExportAvailable ? (
-              <p className="text-sm text-black/60">
-                PDF export is disabled in this build because there is no exact DOCX-to-PDF converter
-                installed. The app only exposes outputs it can preserve faithfully.
-              </p>
-            ) : null}
-
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-5">
+            <div className="border-2 border-foreground bg-card p-5">
               <div className="mb-3 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 <p className="font-medium">Recruiter note</p>
               </div>
-              <p className="text-sm leading-7 text-black/72">{session.improvedResume.recruiterNote}</p>
+              <p className="text-sm leading-7 text-foreground/70">{session.improvedResume.recruiterNote}</p>
             </div>
 
-            <div className="rounded-[24px] border border-black/10 bg-white/70 p-5">
+            <div className="border-2 border-foreground bg-card p-5">
               <p className="mb-3 font-medium">Export notes</p>
-              <div className="space-y-2 text-sm text-black/65">
+              <div className="space-y-2 text-sm text-foreground/65">
                 {[...session.improvedResume.changeSummary, ...session.improvedResume.notes].map((note) => (
                   <p key={note}>{note}</p>
                 ))}
               </div>
             </div>
 
-            {info ? <p className="text-sm text-emerald-700">{info}</p> : null}
+            {info ? <p className="border-2 border-primary bg-primary/10 p-3 text-sm text-primary">{info}</p> : null}
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
           </CardContent>
         </Card>

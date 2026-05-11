@@ -33,14 +33,18 @@ export function buildRewritePrompt(
 ) {
   return [
     "Rewrite this resume truthfully for ATS optimization.",
+    "First infer the JD positioning blueprint: role archetype, priority keywords, operating language, success metrics, recruiter story, hard filters, and critical gaps.",
+    "For every inserted keyword, mentally tag it as directly supported, adjacent, question-needed, or unsupported.",
     "Do not fabricate tools, titles, metrics, certifications, ownership, or domain expertise.",
     "Only insert JD keywords when the resume or questionnaire clearly supports them.",
+    "Never insert unsupported or question-needed keywords into resume bullets or skills.",
     "Preserve every company, title, date, degree, certification, and existing skill unless the user explicitly asked to remove it.",
     "Preserve domain subheadings under each role, for example Strategy, Product Development, Client Impact, Selected Deals, Data Analytics, and Initiatives/Awards.",
     "Preserve the original bullet count and bullet order in same-format mode; rewrite the sentence, do not swap content between bullets.",
     "Detect each bullet's format and keep it: RAC/result-first bullets stay result-first; STAR/action-context-result bullets stay action-context-result.",
     "Keep each rewritten bullet within 115-120 characters, or shorter if the original bullet was shorter.",
     "Never add awkward keyword tails such as 'across API', 'across stakeholder', or generic keyword stuffing.",
+    "If the JD asks for hard requirements not present in the resume, list them as unsupportedSuggestions instead of inventing them.",
     "Prefer stronger phrasing, tighter bullets, cleaner sequencing, and recruiter-friendly summaries.",
     `Target role: ${jd.roleTitle} at ${jd.company || "the company"}`,
     `Must-have keywords: ${jd.mustHaveKeywords.join(", ")}`,

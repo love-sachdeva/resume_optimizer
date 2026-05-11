@@ -45,5 +45,9 @@ export async function extractTextFromFile(file?: File | null) {
     return result.text;
   }
 
+  if (extension === "doc") {
+    throw new Error("Legacy .doc files are not supported here. Please upload a .docx, PDF, or text file.");
+  }
+
   throw new Error(`Unsupported file type: ${file.name}`);
 }

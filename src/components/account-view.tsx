@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 import { ArrowRight, LogIn, LogOut, ShieldCheck } from "lucide-react";
 
 import { useAppSettings, signInAccount, signOutAccount } from "@/lib/auth-store";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleSignInButton } from "@/components/google-signin-button";
+import { SectionLabel } from "@/components/site/section-label";
 import { Input } from "@/components/ui/input";
 
 export function AccountView() {
@@ -52,19 +52,20 @@ export function AccountView() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12 lg:px-10">
+    <div className="relative mx-auto max-w-5xl px-6 py-12 lg:px-10">
+      <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 bg-primary/10 blur-3xl" />
       <div className="mb-8 space-y-3">
-        <Badge>Account</Badge>
-        <h1 className="font-display text-4xl font-semibold tracking-tight">
+        <SectionLabel index="00">Account</SectionLabel>
+        <h1 className="mid-type text-4xl font-semibold tracking-tight">
           {account.isLoggedIn ? "Profile & Preferences" : "Create your workspace"}
         </h1>
-        <p className="max-w-3xl text-black/65">
+        <p className="max-w-3xl text-foreground/65">
           Define your domains to enable automatic job-fit analysis and persona-based optimization.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <Card className="rounded-[32px]">
+        <Card>
           <CardHeader>
             <CardTitle>{account.isLoggedIn ? "Your Profile" : "Sign in"}</CardTitle>
             <CardDescription>
@@ -73,10 +74,10 @@ export function AccountView() {
           </CardHeader>
           <CardContent className="space-y-6">
             {!account.isLoggedIn && (
-               <div className="space-y-4 pb-6 border-b border-black/5">
+               <div className="space-y-4 border-b-2 border-foreground/10 pb-6">
                  <div className="flex flex-col gap-3">
                    {googleConfigured ? (
-                     <div className="flex flex-col items-center justify-center p-6 rounded-[24px] border border-black/5 bg-black/[0.02]">
+                     <div className="flex flex-col items-center justify-center border-2 border-foreground bg-primary/10 p-6">
                         <GoogleSignInButton
                           onCredential={(payload) => {
                             signInAccount({
@@ -92,20 +93,20 @@ export function AccountView() {
                             router.push(next || "/profile");
                           }}
                         />
-                        <p className="text-[10px] text-black/30 mt-4 uppercase tracking-widest">Recommended for Coach LMS Sync</p>
+                        <p className="mono mt-4 text-[10px] uppercase tracking-widest text-foreground/45">Recommended for Coach LMS Sync</p>
                      </div>
                    ) : (
-                     <div className="flex flex-col items-center justify-center p-8 rounded-[32px] border-2 border-dashed border-black/10 bg-black/[0.01] text-center">
-                        <div className="h-12 w-12 rounded-full bg-black/5 flex items-center justify-center mb-4">
-                           <ShieldCheck className="h-6 w-6 text-black/20" />
+                     <div className="flex flex-col items-center justify-center border-2 border-dashed border-foreground/20 bg-card p-8 text-center">
+                        <div className="mb-4 flex h-12 w-12 items-center justify-center border-2 border-foreground/30 text-primary">
+                           <ShieldCheck className="h-6 w-6" />
                         </div>
-                        <h4 className="font-bold text-ink mb-1">Google Login Unavailable</h4>
-                        <p className="text-xs text-black/50 max-w-[240px] mb-6">
+                        <h4 className="mb-1 font-bold text-foreground">Google Login Unavailable</h4>
+                        <p className="mb-6 max-w-[240px] text-xs text-foreground/55">
                            `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is not set in your environment variables.
                         </p>
                         <Button 
                           variant="secondary" 
-                          className="rounded-full px-8"
+                          className="px-8"
                           onClick={() => {
                             signInAccount({
                               name: "Demo User",
@@ -126,44 +127,44 @@ export function AccountView() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-black/40">Full Name</p>
+                <p className="mono text-xs font-bold uppercase tracking-widest text-foreground/45">Full Name</p>
                 <Input placeholder="Your name" value={name} onChange={(event) => setName(event.target.value)} />
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-black/40">Email Address</p>
+                <p className="mono text-xs font-bold uppercase tracking-widest text-foreground/45">Email Address</p>
                 <Input placeholder="Your email" value={email} onChange={(event) => setEmail(event.target.value)} />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-black/40">Organization</p>
+                <p className="mono text-xs font-bold uppercase tracking-widest text-foreground/45">Organization</p>
                 <Input placeholder="Cohort / Company" value={organization} onChange={(event) => setOrganization(event.target.value)} />
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-black/40">Cohort Track</p>
+                <p className="mono text-xs font-bold uppercase tracking-widest text-foreground/45">Cohort Track</p>
                 <Input placeholder="e.g. Co25" value={roleTrack} onChange={(event) => setRoleTrack(event.target.value)} />
               </div>
             </div>
 
             <div className="space-y-2 pt-4">
-               <p className="text-xs font-bold uppercase tracking-widest text-black/40">Career Domains (for Fit Analysis)</p>
+               <p className="mono text-xs font-bold uppercase tracking-widest text-foreground/45">Career Domains (for Fit Analysis)</p>
                <div className="grid gap-3 md:grid-cols-3">
                   <Input placeholder="Primary (e.g. Product)" value={primaryDomain} onChange={(e) => setPrimaryDomain(e.target.value)} />
                   <Input placeholder="Secondary (e.g. Growth)" value={secondaryDomain} onChange={(e) => setSecondaryDomain(e.target.value)} />
                   <Input placeholder="Tertiary (e.g. Ops)" value={tertiaryDomain} onChange={(e) => setTertiaryDomain(e.target.value)} />
                </div>
-               <p className="text-[10px] text-black/40 italic">Jobs outside these domains will be flagged as "Low Fit".</p>
+               <p className="text-[10px] text-foreground/45 italic">Jobs outside these domains will be flagged as "Low Fit".</p>
             </div>
 
             <div className="flex flex-wrap gap-3 pt-4">
-              <Button onClick={handleSignIn} disabled={!name?.trim() || !email?.trim()} className="rounded-full bg-ink text-bone px-8">
+              <Button onClick={handleSignIn} disabled={!name?.trim() || !email?.trim()} className="px-8">
                 <LogIn className="h-4 w-4 mr-2" />
                 Save Profile
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
               {account.isLoggedIn ? (
-                <Button variant="ghost" onClick={() => signOutAccount()} className="rounded-full text-red-500">
+                <Button variant="ghost" onClick={() => signOutAccount()} className="text-primary">
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign out
                 </Button>
@@ -172,10 +173,10 @@ export function AccountView() {
           </CardContent>
         </Card>
 
-        <Card className="bg-ink text-bone rounded-[32px]">
+        <Card className="border-primary bg-primary text-primary-foreground">
           <CardHeader>
-            <CardTitle className="text-bone">Pro Access</CardTitle>
-            <CardDescription className="text-bone/60">
+            <CardTitle className="text-primary-foreground">Pro Access</CardTitle>
+            <CardDescription className="text-primary-foreground/70">
               Personalizing your profile improves AI relevance.
             </CardDescription>
           </CardHeader>
@@ -186,11 +187,11 @@ export function AccountView() {
               "Secure local storage for all your sessions.",
               "Direct integration with Coach LMS portals."
             ].map((item) => (
-              <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-bone/80">
+              <div key={item} className="border-2 border-primary-foreground/25 bg-primary-foreground/10 p-4 text-sm text-primary-foreground/85">
                 {item}
               </div>
             ))}
-            <Button variant="secondary" onClick={() => router.push("/settings")} className="w-full rounded-full mt-4">
+            <Button variant="secondary" onClick={() => router.push("/settings")} className="mt-4 w-full">
               <ShieldCheck className="h-4 w-4 mr-2" />
               Provider Settings
             </Button>

@@ -19,14 +19,14 @@ export function Switch({
       aria-pressed={checked}
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative inline-flex h-7 w-12 items-center rounded-full border border-black/10 transition",
-        checked ? "bg-ink" : "bg-black/10",
+        "relative inline-flex h-7 w-12 items-center border-2 border-foreground transition",
+        checked ? "bg-primary" : "bg-background",
         className
       )}
     >
       <span
         className={cn(
-          "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition",
+          "inline-block h-5 w-5 bg-foreground transition",
           checked ? "translate-x-6" : "translate-x-1"
         )}
       />

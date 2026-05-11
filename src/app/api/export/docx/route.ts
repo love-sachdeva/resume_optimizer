@@ -11,10 +11,15 @@ export async function POST(request: Request) {
     const originalText = String(formData.get("originalText") ?? "");
     const exportText = String(formData.get("exportText") ?? "");
     const lineDiffsRaw = String(formData.get("lineDiffs") ?? "[]");
+    const skillsDiffRaw = String(formData.get("skillsDiff") ?? "null");
+    const layoutHintsRaw = String(formData.get("layoutHints") ?? "null");
+    const qualityModeRaw = String(formData.get("qualityMode") ?? "visual-fit-first");
     const onePage = String(formData.get("onePage") ?? "true") !== "false";
     const candidateName = String(formData.get("candidateName") ?? "candidate");
     const companyName = String(formData.get("companyName") ?? "company");
     let lineDiffs: { original: string; improved: string }[] = [];
+    let skillsDiff: { original?: string; improved?: string; accepted?: boolean } | null = null;
+    let layoutHints: unknown = null;
 
     try {
       const parsed = JSON.parse(lineDiffsRaw);
@@ -22,6 +27,24 @@ export async function POST(request: Request) {
     } catch {
       lineDiffs = [];
     }
+
+    try {
+      const parsed = JSON.parse(skillsDiffRaw);
+      skillsDiff = parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      skillsDiff = null;
+    }
+
+    try {
+      layoutHints = JSON.parse(layoutHintsRaw);
+    } catch {
+      layoutHints = null;
+    }
+
+    const qualityMode =
+      qualityModeRaw === "strict-character-target" || qualityModeRaw === "content-first"
+        ? qualityModeRaw
+        : "visual-fit-first";
 
     const templateBuffer =
       templateFile instanceof File ? Buffer.from(await templateFile.arrayBuffer()) : undefined;
@@ -31,7 +54,10 @@ export async function POST(request: Request) {
       originalText,
       exportText,
       lineDiffs,
+      skillsDiff,
       onePage,
+      qualityMode,
+      layoutHints,
       candidateName,
       companyName
     });
@@ -48,7 +74,25 @@ export async function POST(request: Request) {
         "X-Visible-Paragraphs-Before": String(qa?.visibleParagraphsBefore ?? 0),
         "X-Visible-Paragraphs-After": String(qa?.visibleParagraphsAfter ?? 0),
         "X-Compressed-Lines": String(qa?.compressedLines ?? 0),
-        "X-Render-Verification": qa?.renderVerification ?? "not-run"
+        "X-Skills-Patched": String(qa?.skillsPatched ?? false),
+        "X-Quality-Mode": qa?.qualityMode ?? qualityMode,
+        "X-Fit-Strategy": qa?.fitStrategy ?? "target",
+        "X-PDF-Exported": String(qa?.pdfExported ?? false),
+        "X-Render-Verification": qa?.renderVerification ?? "not-run",
+        "X-Export-QA": JSON.stringify({
+          docxPatched: Boolean(qa?.patchedLines || qa?.skillsPatched),
+          pdfExported: false,
+          pageCount: qa?.renderVerification === "passed-one-page" ? 1 : null,
+          textSelectable: null,
+          linksPreserved: null,
+          renderedPages: qa?.renderVerification === "passed-one-page" ? 1 : 0,
+          warnings:
+            qa?.renderVerification === "unavailable"
+              ? ["DOCX render verification is unavailable in this environment."]
+              : qa?.renderVerification === "failed-multiple-pages"
+                ? ["DOCX render verification found multiple pages."]
+                : []
+        })
       }
     });
   } catch (error) {

@@ -283,8 +283,20 @@ function finalizeGeneratedResume(
     .filter(Boolean)
     .join("\n");
 
+  const skillsDiff = heuristicBase.rewritePlan?.skillsDiff ?? null;
+  const exportDiffs = skillsDiff
+    ? [
+        ...lineDiffs,
+        {
+          section: skillsDiff.section,
+          original: skillsDiff.original,
+          improved: skillsDiff.improved,
+          accepted: skillsDiff.accepted
+        }
+      ]
+    : lineDiffs;
   const exportText = effectivePreferences.keepSameFormat
-    ? buildPatchedExportText(originalResume.rawText, lineDiffs)
+    ? buildPatchedExportText(originalResume.rawText, exportDiffs)
     : rebuiltExportText;
 
   const rescoredProfile: ResumeProfile = {
@@ -311,6 +323,15 @@ function finalizeGeneratedResume(
       ? rawImproved.changeSummary
       : heuristicBase.changeSummary,
     lineDiffs,
+    layoutInventory: heuristicBase.layoutInventory,
+    rewritePlan: heuristicBase.rewritePlan
+      ? {
+          ...heuristicBase.rewritePlan,
+          lineDiffs,
+          skillsDiff
+        }
+      : undefined,
+    exportQaReport: heuristicBase.exportQaReport,
     followUpQuestions:
       rawImproved.followUpQuestions?.length
         ? rawImproved.followUpQuestions
@@ -514,6 +535,6 @@ export async function analyzeWithProvider(options: {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Provider call failed.";
     console.error("Provider analysis fallback:", message);
-    return fallbackResponse(message);
+    throw new Error(`Provider analysis failed: ${message}`);
   }
 }

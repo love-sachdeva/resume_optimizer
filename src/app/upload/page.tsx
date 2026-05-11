@@ -5,7 +5,7 @@ import { UploadWorkspace } from "@/components/upload-workspace";
 
 export default function UploadPage() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen bg-background text-foreground">
       <SiteHeader />
       <Suspense fallback={null}>
         <UploadWorkspace />

@@ -1,4 +1,4 @@
-import { DOMAIN_KEYWORDS, ROLE_ADJACENCY, SENIORITY_KEYWORDS } from "@/lib/constants";
+import { DOMAIN_KEYWORDS, ROLE_ADJACENCY, ROLE_PACKS, SENIORITY_KEYWORDS } from "@/lib/constants";
 import { jobDescriptionProfileSchema } from "@/lib/schemas";
 import {
   detectDomains,
@@ -14,25 +14,49 @@ const ROLE_PHRASE_KEYWORDS = [
   "chief of staff",
   "ceo office",
   "ceo priorities",
+  "founder's office",
+  "founders office",
+  "founder office",
+  "founder bandwidth",
+  "bizops",
   "okrs",
   "qbrs",
+  "quarterly business review",
   "operating cadence",
   "leadership reviews",
   "executive dashboards",
   "business metrics",
+  "board decks",
+  "board narrative",
+  "investor updates",
+  "investor tracker",
+  "fundraising support",
+  "hiring ops",
+  "talent sourcing",
   "delivery excellence",
   "sales-to-delivery alignment",
   "client outcomes",
   "client escalations",
   "revenue growth",
+  "arr growth",
+  "b2b saas",
   "margins",
   "digital growth",
   "seo strategy",
+  "aeo",
+  "answer engine optimization",
   "content strategy",
+  "content engine",
   "performance marketing",
   "ai-led growth",
+  "ai discovery",
   "cross-functional governance",
-  "stakeholder management"
+  "stakeholder management",
+  "process mapping",
+  "end-state design",
+  "risk controls",
+  "change management",
+  ...ROLE_PACKS.flatMap((pack) => pack.keywords)
 ];
 
 function includesPhrase(text: string, phrase: string) {
@@ -96,31 +120,33 @@ function extractQualifications(text: string) {
 }
 
 function extractHardFilters(text: string) {
-  const filters: { type: "location" | "experience" | "education" | "visa" | "other"; value: string }[] =
+  const filters: { type: "location" | "experience" | "education" | "visa" | "other"; value: string; required: boolean }[] =
     [];
+  const isRequired = (value: string) =>
+    /\b(mandatory|must[-\s]?have|required|minimum|only candidates|need(?:s|ed)?|should have)\b/i.test(value);
   const locationMatch = text.match(
     /(based in [^.]+|open to relocation[^.]+|location[:\s][^.]+)/i
   );
   if (locationMatch) {
-    filters.push({ type: "location", value: locationMatch[1].trim() });
+    filters.push({ type: "location", value: locationMatch[1].trim(), required: isRequired(locationMatch[1]) });
   }
 
   const experienceMatch = text.match(/(\d+\s*[-–]?\s*\d*\+?\s+years?[^.]+)/i);
   if (experienceMatch) {
-    filters.push({ type: "experience", value: experienceMatch[1].trim() });
+    filters.push({ type: "experience", value: experienceMatch[1].trim(), required: isRequired(experienceMatch[1]) });
   }
 
-  const educationMatch = text.match(/(bachelor'?s|master'?s|mba|degree[^.]+)/i);
+  const educationMatch = text.match(/((?:mandatory|required|must[-\s]?have|minimum|need(?:s|ed)?)[^.]{0,80}(?:bachelor'?s|master'?s|mba|degree)[^.]*|(?:bachelor'?s|master'?s|mba|degree)[^.]{0,80}(?:mandatory|required|must[-\s]?have|minimum|need(?:s|ed)?)[^.]*)/i);
   if (educationMatch) {
-    filters.push({ type: "education", value: educationMatch[1].trim() });
+    filters.push({ type: "education", value: educationMatch[1].trim(), required: true });
   }
 
   const visaMatch = text.match(/(visa|work authorization|sponsorship[^.]+)/i);
   if (visaMatch) {
-    filters.push({ type: "visa", value: visaMatch[1].trim() });
+    filters.push({ type: "visa", value: visaMatch[1].trim(), required: isRequired(visaMatch[1]) });
   }
 
-  return filters.map((filter) => ({ ...filter, required: true }));
+  return filters;
 }
 
 function extractMustHaveKeywords(text: string) {

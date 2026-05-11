@@ -256,7 +256,7 @@ function scoreHardFilters(resume: ResumeProfile, jd: JobDescriptionProfile) {
 
   jd.hardFilters.forEach((filter) => {
     const value = filter.value.toLowerCase();
-    const requiredFilter = filter.required || mandatoryLanguage;
+    const requiredFilter = filter.required;
     if (filter.type === "location" && !resumeText.includes(value.replace("based in ", ""))) {
       score -= requiredFilter ? 18 : 8;
       misses.push(filter.value);
@@ -297,7 +297,10 @@ function scoreHardFilters(resume: ResumeProfile, jd: JobDescriptionProfile) {
     capReasons.push(`mandatory title mismatch for ${jd.roleTitle || jd.roleFamily}`);
   }
 
-  if (mandatoryLanguage && misses.length >= 2) {
+  const requiredMissCount = jd.hardFilters.filter((filter) =>
+    filter.required && misses.includes(filter.value)
+  ).length;
+  if (requiredMissCount >= 2) {
     cap = Math.min(cap, 45);
     capReasons.push("multiple mandatory hard-filter gaps");
   }

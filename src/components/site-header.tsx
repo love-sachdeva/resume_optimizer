@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
 import { ArrowRight, LogOut, UserRound } from "lucide-react";
 
 import { signOutAccount, useAppSettings } from "@/lib/auth-store";
@@ -21,38 +20,25 @@ export function SiteHeader() {
   const pathname = usePathname();
   const settings = useAppSettings();
 
-  useEffect(() => {
-    document
-      .querySelectorAll<HTMLAnchorElement>('header a[href^="/"][target="_blank"]')
-      .forEach((anchor) => anchor.removeAttribute("target"));
-  }, [pathname]);
-
   return (
-    <header className="sticky top-0 z-40 px-4 pt-4 lg:px-6">
-      <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-black/10 bg-white/75 px-5 py-3 shadow-soft backdrop-blur-xl">
-        <Link href="/" className="flex items-center gap-3" suppressHydrationWarning>
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink text-bone shadow-soft">
-            TL
-          </div>
-          <div>
-            <p className="font-display text-xl font-semibold tracking-tight">ThankYouLove</p>
-            <p className="text-[11px] uppercase tracking-[0.22em] text-black/42">
-              Resume Optimizer
-            </p>
-          </div>
+    <header className="sticky top-0 z-40 border-b border-foreground/15 bg-background/95 backdrop-blur">
+      <div className="flex items-center justify-between px-6 py-5 lg:px-10">
+        <Link href="/" className="group flex items-center gap-2" aria-label="ThankYouLove home">
+          <span className="relative inline-flex h-7 w-7 items-center justify-center border-2 border-foreground transition-colors group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground">
+            <span className="display text-lg leading-none">T</span>
+            <span className="absolute -right-1 -top-1 h-2 w-2 bg-primary group-hover:bg-foreground" />
+          </span>
+          <span className="mono text-[11px] uppercase tracking-[0.2em]">ThankYouLove / Optimizer</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 rounded-full bg-black/[0.03] p-1 md:flex">
+        <nav className="hidden items-center gap-8 mono text-[11px] uppercase tracking-[0.18em] md:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              suppressHydrationWarning
               className={cn(
-                "rounded-full px-4 py-2 text-sm transition",
-                pathname === item.href
-                  ? "bg-white font-medium text-black shadow-sm"
-                  : "text-black/60 hover:text-black"
+                "link-underline transition-colors hover:text-primary",
+                pathname === item.href ? "text-primary" : "text-foreground/70"
               )}
             >
               {item.label}
@@ -63,21 +49,21 @@ export function SiteHeader() {
         <div className="hidden items-center gap-3 md:flex">
           {settings.account.isLoggedIn ? (
             <details className="group relative">
-              <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-black/10 bg-white/72 px-4 py-2 text-sm text-black/65 transition hover:text-black">
+              <summary className="mono flex cursor-pointer list-none items-center gap-2 border-2 border-foreground px-4 py-3 text-[11px] uppercase tracking-[0.18em] transition hover:border-primary hover:text-primary">
                 <UserRound className="h-4 w-4" />
                 {settings.account.name || "Account"}
               </summary>
-              <div className="absolute right-0 top-12 z-50 w-56 rounded-[24px] border border-black/10 bg-white p-2 shadow-soft">
+              <div className="absolute right-0 top-14 z-50 w-56 border-2 border-foreground bg-background p-2 shadow-soft">
                 <Link
                   href="/profile"
-                  className="block rounded-2xl px-4 py-3 text-sm text-black/70 hover:bg-black/[0.04]"
+                  className="block px-4 py-3 text-sm text-foreground/70 hover:bg-foreground hover:text-background"
                 >
                   Open profile
                 </Link>
                 <button
                   type="button"
                   onClick={() => signOutAccount()}
-                  className="flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-primary hover:bg-primary hover:text-primary-foreground"
                 >
                   <LogOut className="h-4 w-4" />
                   Sign out
@@ -86,14 +72,13 @@ export function SiteHeader() {
             </details>
           ) : (
             <Link
-              href="/profile?next=%2Fsettings%3Fnext%3D%252Fupload&reason=login"
-              suppressHydrationWarning
-              className="rounded-full border border-black/10 bg-white/72 px-4 py-2 text-sm text-black/65"
+              href="/account?next=%2Fsettings%3Fnext%3D%252Fupload&reason=login"
+              className="mono border-2 border-foreground px-4 py-3 text-[11px] uppercase tracking-[0.18em] transition hover:border-primary hover:text-primary"
             >
               Sign in
             </Link>
           )}
-          <Link href="/upload" className="hidden md:block" suppressHydrationWarning>
+          <Link href="/upload" className="hidden md:block">
             <Button variant="secondary">
               Start now
               <ArrowRight className="h-4 w-4" />
