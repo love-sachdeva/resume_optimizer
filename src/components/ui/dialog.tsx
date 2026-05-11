@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,11 @@ export function DialogClose({ children, asChild }: { children: React.ReactNode; 
 export function DialogContent({ children, className }: { children: React.ReactNode; className?: string }) {
   const context = React.useContext(DialogContext);
   if (!context) throw new Error("DialogContent must be used within a Dialog");
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Prevent scroll when open
   React.useEffect(() => {
@@ -72,10 +78,14 @@ export function DialogContent({ children, className }: { children: React.ReactNo
     };
   }, [context.open]);
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <AnimatePresence>
       {context.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -102,7 +112,8 @@ export function DialogContent({ children, className }: { children: React.ReactNo
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -432,7 +432,7 @@ export function OneClickApplyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-7xl flex-col overflow-hidden p-0">
+      <DialogContent className="flex max-h-[92vh] w-[min(1280px,calc(100vw-1rem))] max-w-none flex-col overflow-hidden p-0">
         <div className="border-b border-foreground/15 p-6 pr-20">
           <DialogHeader>
             <DialogTitle>One-click apply to {job.company}</DialogTitle>
@@ -442,7 +442,7 @@ export function OneClickApplyDialog({
           </DialogHeader>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-auto p-6">
           {/* Notifications at top for visibility */}
           {info ? (
             <div className="mb-4 flex items-start gap-2 border-2 border-primary bg-primary/15 p-4 text-sm">
