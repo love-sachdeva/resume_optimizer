@@ -43,14 +43,14 @@ export function OverviewTab() {
           <div
             key={i}
             className={cn(
-              "relative overflow-hidden border-2 border-foreground p-5 transition-all hover:-translate-y-0.5",
+              "relative overflow-hidden border-2 border-foreground/35 p-5 transition-all hover:-translate-y-0.5 hover:border-foreground",
               stat.tone === "solid" && "bg-primary text-primary-foreground",
               stat.tone === "red" && "bg-primary/10",
               stat.tone === "light" && "bg-card hover:bg-primary/10"
             )}
           >
             {stat.tone !== "solid" ? <div className="absolute right-0 top-0 h-full w-10 bg-primary/10" /> : null}
-            <div className={cn("mb-4 flex h-10 w-10 items-center justify-center border-2", i === 3 ? "border-primary-foreground" : "border-foreground text-primary")}>
+            <div className={cn("mb-4 flex h-10 w-10 items-center justify-center border-2", i === 3 ? "border-primary-foreground" : "border-foreground/45 text-primary")}>
               <stat.icon className="h-5 w-5" />
             </div>
             <p className={cn("mono text-[11px] uppercase tracking-[0.18em]", i === 3 ? "text-primary-foreground/70" : "text-foreground/55")}>{stat.label}</p>
@@ -68,22 +68,24 @@ export function OverviewTab() {
             <Link
               key={session.id}
               href={`/dashboard?session=${session.id}`}
-              className="group flex items-center justify-between border-2 border-foreground bg-card p-4 transition-all hover:-translate-y-0.5 hover:bg-primary/10"
+              className="group flex items-center justify-between gap-4 border-2 border-foreground/30 bg-card p-4 transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10"
             >
-               <div className="flex items-center gap-4">
-                 <div className="flex h-12 w-12 items-center justify-center border-2 border-foreground text-primary">
+               <div className="flex min-w-0 items-center gap-4">
+                 <div className="flex h-12 w-12 shrink-0 items-center justify-center border-2 border-foreground/40 text-primary">
                     <TrendingUp className="h-5 w-5" />
                  </div>
-                 <div>
-                   <p className="font-semibold text-foreground">
+                 <div className="min-w-0">
+                   <p className="truncate font-semibold text-foreground">
                       {session.analysis.jobDescriptionProfile.company ||
                         session.analysis.jobDescriptionProfile.roleTitle ||
                         "Resume improvement"}
                    </p>
-                   <div className="flex items-center gap-2 mt-1">
+                   <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge className={cn(
-                        "text-[10px]",
-                        session.analysis.matchAnalysis.overallScore >= 80 ? "border-primary bg-primary/10 text-primary" : "border-foreground/25 bg-secondary text-foreground/55"
+                        "shrink-0 border-primary px-2.5 py-1 text-[10px] font-semibold",
+                        session.analysis.matchAnalysis.overallScore >= 80
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-primary/10 text-primary"
                       )}>
                         ATS: {session.analysis.matchAnalysis.overallScore}%
                       </Badge>
@@ -91,7 +93,7 @@ export function OverviewTab() {
                    </div>
                  </div>
                </div>
-               <span className="flex h-10 w-10 items-center justify-center bg-foreground text-background opacity-0 transition-opacity group-hover:opacity-100">
+               <span className="hidden h-10 w-10 shrink-0 items-center justify-center bg-primary text-primary-foreground transition-opacity md:flex">
                  <ArrowRight className="h-4 w-4" />
                </span>
             </Link>

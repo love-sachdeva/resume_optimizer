@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SectionLabel } from "@/components/site/section-label";
 import { Textarea } from "@/components/ui/textarea";
 import { fileToDataUrl } from "@/lib/client-store";
 import { clearProfileMemory, getProfileMemory, saveProfileMemory } from "@/lib/profile-store";
@@ -108,23 +109,24 @@ export function ProfileView() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 lg:px-10">
+    <div className="relative mx-auto max-w-7xl px-6 py-12 lg:px-10">
+      <div className="pointer-events-none absolute left-0 top-0 h-72 w-72 bg-primary/10 blur-3xl" />
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3">
-          <Badge>Profile memory</Badge>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
-            Save the deeper details once
+          <SectionLabel index="05">Profile memory</SectionLabel>
+          <h1 className="mid-type max-w-4xl text-4xl font-semibold tracking-tight">
+            Save reusable resume context
           </h1>
-          <p className="max-w-3xl text-black/65">
+          <p className="max-w-3xl text-foreground/65">
             This is optional. The app will reuse these answers across jobs, so quick-pass analysis
             can produce a stronger first draft without asking the same questions every time.
           </p>
         </div>
 
-        <div className="rounded-[28px] border border-black/10 bg-white/80 px-5 py-4">
-          <p className="text-sm uppercase tracking-[0.18em] text-black/45">Saved answers</p>
-          <p className="font-display text-5xl font-semibold">{answeredCount}</p>
-          <p className="text-sm text-black/55">You can keep this partial and update it later.</p>
+        <div className="border-2 border-primary bg-primary px-5 py-4 text-primary-foreground">
+          <p className="mono text-sm uppercase tracking-[0.18em] text-primary-foreground/70">Saved answers</p>
+          <p className="display text-5xl font-semibold">{answeredCount}</p>
+          <p className="text-sm text-primary-foreground/75">You can keep this partial and update it later.</p>
         </div>
       </div>
 
@@ -158,7 +160,7 @@ export function ProfileView() {
         </Button>
       </div>
 
-      <div className="mb-6 inline-flex rounded-full border border-black/10 bg-white/72 p-1">
+      <div className="mb-6 inline-flex border-2 border-foreground/35 bg-card p-1">
         {[
           ["resumes", "Resume library"],
           ["questions", "Answer better-fit questions"]
@@ -167,8 +169,8 @@ export function ProfileView() {
             key={id}
             type="button"
             onClick={() => setActiveTab(id as "resumes" | "questions")}
-            className={`rounded-full px-5 py-2 text-sm transition ${
-              activeTab === id ? "bg-ink text-bone" : "text-black/60 hover:text-black"
+            className={`mono px-5 py-2 text-[11px] uppercase tracking-[0.16em] transition ${
+              activeTab === id ? "bg-primary text-primary-foreground" : "text-foreground/60 hover:bg-primary/10 hover:text-foreground"
             }`}
           >
             {label}
@@ -194,7 +196,7 @@ export function ProfileView() {
               onChange={(event) => setPortfolio(event.target.value)}
             />
           </div>
-          <div className="rounded-[22px] border border-black/10 bg-white/70 p-4 text-sm leading-6 text-black/60">
+          <div className="border-2 border-foreground/30 bg-primary/10 p-4 text-sm leading-6 text-foreground/65">
             Default resume is used automatically for Coach ATS scores and the Improve resume flow.
             Use the star button below to change it.
           </div>
@@ -220,7 +222,7 @@ export function ProfileView() {
               value={resumeLabel}
               onChange={(event) => setResumeLabel(event.target.value)}
             />
-            <label className="flex cursor-pointer items-center justify-center rounded-[22px] border border-dashed border-black/15 bg-white/70 px-4 py-3 text-sm">
+            <label className="flex cursor-pointer items-center justify-center border-2 border-dashed border-foreground/30 bg-primary/10 px-4 py-3 text-sm transition hover:border-primary hover:bg-primary/15">
               <UploadCloud className="mr-2 h-4 w-4" />
               Upload resume
               <input
@@ -279,7 +281,7 @@ export function ProfileView() {
             </label>
           </div>
           {isParsingResume ? (
-            <p className="flex items-center gap-2 text-sm text-black/55">
+            <p className="flex items-center gap-2 text-sm text-foreground/55">
               <LoaderCircle className="h-4 w-4 animate-spin" />
               Extracting resume text for job scoring...
             </p>
@@ -291,22 +293,22 @@ export function ProfileView() {
               savedResumes.map((resume) => (
                 <div
                   key={resume.id}
-                  className="flex items-start justify-between gap-3 rounded-[22px] border border-black/10 bg-white/72 p-4"
+                  className="flex items-start justify-between gap-3 border-2 border-foreground/30 bg-card p-4 transition hover:border-primary hover:bg-primary/10"
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{resume.label}</p>
                       {defaultResumeId === resume.id ? (
-                        <Badge className="rounded-full bg-emerald-50 text-emerald-700">
+                        <Badge className="border-primary bg-primary text-primary-foreground">
                           <CheckCircle2 className="h-3 w-3" />
                           Default
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-sm text-black/58">
+                    <p className="mt-1 text-sm text-foreground/58">
                       {resume.domain} · {resume.fileName}
                     </p>
-                    <p className="mt-1 text-xs text-black/40">
+                    <p className="mt-1 text-xs text-foreground/40">
                       {resume.parsedText.trim()
                         ? "Ready for Coach job scoring"
                         : "Needs re-upload for job scoring"}
@@ -319,10 +321,10 @@ export function ProfileView() {
                         setDefaultResumeId(resume.id);
                         setDefaultResumeIdState(resume.id);
                       }}
-                      className="rounded-full border border-black/10 bg-white p-2"
+                      className="border-2 border-foreground/30 bg-background p-2 transition hover:border-primary hover:bg-primary/10"
                       title="Use as default resume"
                     >
-                      <Star className={`h-4 w-4 ${defaultResumeId === resume.id ? "fill-amber-400 text-amber-500" : ""}`} />
+                      <Star className={`h-4 w-4 ${defaultResumeId === resume.id ? "fill-primary text-primary" : ""}`} />
                     </button>
                     <button
                       type="button"
@@ -331,7 +333,7 @@ export function ProfileView() {
                         setSavedResumes(listSavedResumes());
                         setDefaultResumeIdState(getDefaultResumeId());
                       }}
-                      className="rounded-full border border-black/10 bg-white p-2"
+                      className="border-2 border-foreground/30 bg-background p-2 transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -339,7 +341,7 @@ export function ProfileView() {
                 </div>
               ))
             ) : (
-              <div className="rounded-[22px] border border-dashed border-black/10 bg-white/72 p-5 text-sm text-black/60">
+              <div className="border-2 border-dashed border-foreground/25 bg-card p-5 text-sm text-foreground/60">
                 No saved base resumes yet.
               </div>
             )}
@@ -386,9 +388,9 @@ export function ProfileView() {
                     key={question.id}
                     className={question.layout === "full" ? "md:col-span-2" : ""}
                   >
-                    <div className="rounded-[24px] border border-black/10 bg-white/72 p-4">
+                    <div className="border-2 border-foreground/30 bg-card p-4">
                       <p className="font-medium">{question.label}</p>
-                      <p className="mt-1 text-sm text-black/58">{question.prompt}</p>
+                      <p className="mt-1 text-sm text-foreground/58">{question.prompt}</p>
                       <div className="mt-4">
                         {question.type === "textarea" ? (
                           <Textarea
@@ -410,10 +412,10 @@ export function ProfileView() {
                                 onClick={() =>
                                   setAnswers((current) => ({ ...current, [question.id]: option }))
                                 }
-                                className={`rounded-full px-4 py-2 text-sm transition ${
+                                className={`border-2 px-4 py-2 text-sm transition ${
                                   answers[question.id] === option
-                                    ? "bg-ink text-bone"
-                                    : "bg-black/5 text-black/65 hover:bg-black/10"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-foreground/25 bg-background text-foreground/65 hover:border-primary hover:bg-primary/10"
                                 }`}
                               >
                                 {option}
@@ -428,10 +430,10 @@ export function ProfileView() {
                                   key={option}
                                   type="button"
                                   onClick={() => toggleMultiValue(question.id, option)}
-                                  className={`rounded-full px-4 py-2 text-sm transition ${
+                                  className={`border-2 px-4 py-2 text-sm transition ${
                                     selectedMulti.has(option)
-                                      ? "bg-ink text-bone"
-                                      : "bg-black/5 text-black/65 hover:bg-black/10"
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-foreground/25 bg-background text-foreground/65 hover:border-primary hover:bg-primary/10"
                                   }`}
                                 >
                                   {option}
@@ -461,10 +463,10 @@ export function ProfileView() {
                                 onClick={() =>
                                   setAnswers((current) => ({ ...current, [question.id]: value }))
                                 }
-                                className={`rounded-full px-4 py-2 text-sm transition ${
+                                className={`border-2 px-4 py-2 text-sm transition ${
                                   answers[question.id] === value
-                                    ? "bg-ink text-bone"
-                                    : "bg-black/5 text-black/65 hover:bg-black/10"
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-foreground/25 bg-background text-foreground/65 hover:border-primary hover:bg-primary/10"
                                 }`}
                               >
                                 {label}
